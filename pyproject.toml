@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "MCQ-generation"
+version = "0.1.0"
+description = "A workflow for automated MCQ generation using LLMs"
+authors = [
+    { name = "Terry", email = "ytian126@asu.edu" }
+]
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "pandas>=1.0.0",
+    "numpy>=1.18.0",
+    "openai==1.68.2",
+    "pyyaml",
+]
+
+[tool.setuptools]
+packages = ["utils"] 
