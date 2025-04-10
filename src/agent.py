@@ -20,16 +20,14 @@ if not api_key:
     logger.error("OPENAI_API_KEY is not set.")
     raise ValueError("OPENAI_API_KEY is not set.")
 
-
+# TODO # add answer and answer extraction method
 class Agent(BaseModel):
     question_type: str | None = None
     model: str | None = None
     system_prompt: str | None = None
     user_prompt: str | None = None
     most_recent_completion: str | None = None
-    most_recent_extraction: str | None = None
     most_recent_execution_time: timedelta | None = None
-    require_json_output: bool = True
     input_tokens: int | None = None
     output_tokens: int | None = None
 
@@ -40,33 +38,11 @@ class Agent(BaseModel):
             "user_prompt": self.user_prompt,
             "model": self.model,
             "completion": self.most_recent_completion,
-            "extraction": self.most_recent_extraction,
             "execution_time": str(self.most_recent_execution_time),
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
         }
     
-
-    
-    def extract_output(self, input_str: str) -> str | None:
-        # Use regex to extract content within <MCQ> and </MCQ> tags
-        pattern = re.compile(r"<MCQ>(.*?)</?MCQ>", re.DOTALL)
-        match = pattern.search(input_str)
-        if match:
-            target_str = match.group(1).strip()
-
-            # Replace escaped newlines and tabs that are within the string
-            target_str = target_str.replace("\\n", "\n").replace("\\t", "\t")
-
-            # Store the most recent extraction as a string
-            self.most_recent_extraction = target_str
-
-            return target_str
-        
-        else:
-            
-            logger.error(f"No <MCQ> tags found in '{input_str}'.")
-            return None
 
     def calculate_tokens(self, text: str) -> int:
         # Initialize the tokenizer for the specific model
@@ -95,8 +71,7 @@ class Agent(BaseModel):
 
         if completion is None:
             logger.warning("Received empty completion.")
-            extraction = ""
-        else:
-            extraction = self.extract_output(completion)
+ 
         self.most_recent_execution_time = datetime.now() - start_time
-        return extraction
+        return completion
+

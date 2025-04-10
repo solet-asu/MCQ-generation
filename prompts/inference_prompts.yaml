@@ -30,7 +30,8 @@ system_prompt: |
   Step1: Summarize your understanding of what inferential questions are and what is cause-and-effect inference. 
   Step 2: Based on your understanding of what inferential questions are, generate one mutliple-choice inferential question based on the text provided by the user. This questions should be cause-and-effect inference.  
   Print out your reasoning BEFORE you print out the mutliple-choice inferential question. 
-  wrap up the multiple-choice inferential question within <MCQ></MCQ> tags. The stem SHOULD be included in the <MCQ> tags.
+
+  IMPORTANT: wrap up the multiple-choice inferential question within <MCQ></MCQ> tags. The stem SHOULD be included in the <MCQ> tags.
 
 
 user_prompt: |
