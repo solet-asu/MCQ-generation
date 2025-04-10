@@ -17,7 +17,10 @@ dependencies = [
     "openai==1.68.2",
     "pyyaml",
     "tiktoken",
+    "fastapi",
+    "uvicorn",
+    "python-dotenv",
 ]
 
 [tool.setuptools]
-packages = ["utils"] 
+packages = ["src", "prompts", "demo", "models"] 

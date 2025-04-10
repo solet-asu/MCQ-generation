@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCQ Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .text-input, .options, .questions {
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .text-input, .questions {
+            flex: 1;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            margin: 0 10px;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            flex: 0.5;
+        }
+
+        textarea {
+            width: 100%;
+            height: 80%;
+            resize: none;
+            border: none;
+            outline: none;
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 8px;
+        }
+
+        select, input[type="submit"] {
+            margin: 10px 0;
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            width: 100%;
+        }
+
+        .questions {
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .spinner {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="text-input">
+            <h2>Enter Text</h2>
+            <textarea id="text" name="text" required></textarea>
+        </div>
+
+        <div class="options">
+            <h2>Options</h2>
+            <label for="question_type">Question Type:</label>
+            <select id="question_type" name="question_type" required>
+                <option value="details">Details</option>
+                <option value="inference">Inference</option>
+                <option value="main_idea">Main Idea</option>
+            </select>
+
+            <label for="num_questions">Number of Questions:</label>
+            <input type="number" id="num_questions" name="num_questions" value="1" min="1" required>
+
+            <input type="submit" value="Generate Questions" onclick="generateQuestions()">
+        </div>
+
+        <div class="questions" id="questions">
+            <h2>Generated Questions</h2>
+            <div class="spinner" id="spinner"></div>
+            <!-- Questions will be displayed here -->
+        </div>
+    </div>
+
+    <script>
+        async function generateQuestions() {
+            const text = document.getElementById('text').value;
+            const questionType = document.getElementById('question_type').value;
+            const numQuestions = document.getElementById('num_questions').value;
+
+            console.log("text:", text);
+            console.log("questionType:", questionType);
+            console.log("numQuestions:", numQuestions);
+
+            const spinner = document.getElementById('spinner');
+            const questionsDiv = document.getElementById('questions');
+
+            // Show the spinner
+            spinner.style.display = 'block';
+
+            try {
+                const response = await fetch('http://localhost:8000/generate_mcq', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        question_type: questionType,
+                        num_questions: parseInt(numQuestions)
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const questionString = await response.json();
+                console.log(questionString);
+
+                questionsDiv.innerHTML = '<h2>Generated Questions</h2>'; // Reset the content
+                spinner.style.display = 'none'; // Hide the spinner
+
+                // Since questionString is a string, display it directly
+                const questionElement = document.createElement('div');
+                questionElement.innerHTML = `<strong>Generated Question:</strong> ${questionString}`;
+                questionsDiv.appendChild(questionElement);
+
+            } catch (error) {
+                console.error('Error fetching questions:', error);
+                questionsDiv.innerHTML = `<strong>Error:</strong> Could not generate questions. Please try again later.`;
+                spinner.style.display = 'none'; // Hide the spinner
+            }
+        }
+    </script>
+</body>
+</html>
