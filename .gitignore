@@ -175,6 +175,7 @@ cython_debug/
 
 # data files
 data/
+database/
 
 # output files 
 output/

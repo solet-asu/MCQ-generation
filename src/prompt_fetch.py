@@ -2,13 +2,13 @@ import functools
 import importlib.resources
 import logging
 import yaml
-import utils
+import prompts
 
 # Set up logging for the module
 logger = logging.getLogger(__name__)
 
 @functools.cache
-def get_prompts(filename: str = "prompts.yaml") -> dict[str, str]:
+def get_prompts(filename: str = "details_prompts.yaml") -> dict[str, str]:
     """
     Retrieve prompts from a YAML file.
 
@@ -21,15 +21,15 @@ def get_prompts(filename: str = "prompts.yaml") -> dict[str, str]:
         dict[str, str]: A dictionary with prompt keys and their corresponding text.
     """
     try:
-        # Locate the resources directory within the utils package
-        resources_dir = importlib.resources.files(utils)
+        # Locate the resources directory within the prompts package
+        resources_dir = importlib.resources.files(prompts)
         prompt_path = resources_dir / filename
         
         # Open and read the YAML file
         with open(prompt_path, encoding="utf-8") as f:
-            prompts = yaml.safe_load(f)
+            prompts_data = yaml.safe_load(f)
         
-        return prompts
+        return prompts_data
     
     except FileNotFoundError as e:
         logger.error(f"File not found: {prompt_path}")

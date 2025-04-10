@@ -46,9 +46,11 @@ class Agent(BaseModel):
             "output_tokens": self.output_tokens,
         }
     
+
+    
     def extract_output(self, input_str: str) -> str | None:
         # Use regex to extract content within <MCQ> and </MCQ> tags
-        pattern = re.compile(r"<MCQ>(.*?)</MCQ>", re.DOTALL)
+        pattern = re.compile(r"<MCQ>(.*?)</?MCQ>", re.DOTALL)
         match = pattern.search(input_str)
         if match:
             target_str = match.group(1).strip()
@@ -60,7 +62,9 @@ class Agent(BaseModel):
             self.most_recent_extraction = target_str
 
             return target_str
+        
         else:
+            
             logger.error(f"No <MCQ> tags found in '{input_str}'.")
             return None
 
