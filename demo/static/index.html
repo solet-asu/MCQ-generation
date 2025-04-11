@@ -10,8 +10,18 @@
             margin: 0;
             padding: 0;
             display: flex;
+            flex-direction: column; /* Adjust to column to accommodate the top band */
             height: 100vh;
             box-sizing: border-box;
+        }
+
+        .top-band {
+            background-color: #4b2e2e; /* Dark brown color */
+            color: white;
+            text-align: center;
+            padding: 15px 0;
+            font-size: 24px;
+            font-weight: bold;
         }
 
         .container {
@@ -19,6 +29,7 @@
             width: 100%;
             padding: 20px;
             box-sizing: border-box;
+            flex: 1; /* Allow the container to take the remaining space */
         }
 
         .text-input, .options, .questions {
@@ -88,6 +99,9 @@
     </style>
 </head>
 <body>
+    <div class="top-band">
+        Multiple-Choice Question Generation Demo
+    </div>
     <div class="container">
         <div class="text-input">
             <h2>Enter Text</h2>
