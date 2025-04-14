@@ -105,7 +105,7 @@
         .answer {
             padding: 10px;
             box-sizing: border-box;
-            text-align: center;
+            text-align: left;
             border-top: 1px dashed #ccc;
             margin-top: 10px;
         }
@@ -188,10 +188,37 @@
                 questionsDiv.innerHTML = '<h2>Generated Questions</h2>'; // Reset the content
                 spinner.style.display = 'none'; // Hide the spinner
 
+                console.log("mcq:", mcq);
+                console.log("mcq_answer:", mcqAnswer);
+
+                // Split the MCQ into stem and choices
+                const pattern = /(?=\(?[A-D]\))/;  // splits at spaces before A), B), C), or D)
+                const [stem, ...choices] = mcq.trim().split(pattern);
+
                 // Create divs for MCQ and answer
                 const mcqDiv = document.createElement('div');
                 mcqDiv.className = 'mcq_question';
-                mcqDiv.innerHTML = `<p>${mcq}</p>`;
+
+                // Create a paragraph for the stem
+                const stemParagraph = document.createElement('p');
+                stemParagraph.textContent = stem;
+                mcqDiv.appendChild(stemParagraph);
+
+                // Create a container for the choices
+                const choicesContainer = document.createElement('div');
+                choicesContainer.className = 'choices-container';
+
+                // Add each choice as a separate paragraph
+                choices.forEach(choice => {
+                    const choiceParagraph = document.createElement('p');
+                    choiceParagraph.textContent = choice.trim();
+                    choicesContainer.appendChild(choiceParagraph);
+                });
+
+                mcqDiv.appendChild(choicesContainer);
+                
+                console.log("stem:", stem);
+                console.log("choices:", choices);
 
                 const answerDiv = document.createElement('div');
                 answerDiv.className = 'answer';
