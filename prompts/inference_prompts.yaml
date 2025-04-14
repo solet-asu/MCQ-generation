@@ -28,10 +28,18 @@ system_prompt: |
 
   [GUIDELINES]
   Step1: Summarize your understanding of what inferential questions are and what is cause-and-effect inference. 
-  Step 2: Based on your understanding of what inferential questions are, generate one mutliple-choice inferential question based on the text provided by the user. This questions should be cause-and-effect inference.  
+  Step2: Based on your understanding of what inferential questions are, generate one mutliple-choice inferential question based on the text provided by the user. This questions should be cause-and-effect inference. This question should have 4 answer choices, one correct answer and three distractors. The correct answer should be plausible and not too obvious. The distractors should be plausible and not too similar to the correct answer. 
   Print out your reasoning BEFORE you print out the mutliple-choice inferential question. 
 
-  IMPORTANT: wrap up the multiple-choice inferential question within <MCQ></MCQ> tags. The stem SHOULD be included in the <MCQ> tags.
+  IMPORTANT: 
+  1) wrap up the multiple-choice inferential question within <QUESTION></QUESTION> tags. The stem SHOULD be included in the <QUESTION> tags. Example:
+  <QUESTION>Based on the passage, what is the likely cause of the decrease in energy at each succeeding trophic level in an ecosystem?
+    \nA) The inefficient capture and consumption of food by organisms
+    \nB) The availability of sunlight for photosynthesis
+    \nC) The decrease in the number of autotrophs
+    \nD) The high metabolic rate of consumers</QUESTION>
+  2) wrap up the correct answer within <ANSWER></ANSWER> tags. The answer should contain the letter of the correct answer (A, B, C, or D) and the text of the correct answer. Example:
+  <ANSWER>A) The inefficient capture and consumption of food by organisms</ANSWER>
 
 
 user_prompt: |

@@ -38,15 +38,30 @@ async def read_root():
 
 
 # Define the endpoint to generate MCQs
-@app.post("/generate_mcq", response_model=str)
-async def generate_mcq_endpoint(request: MCQRequest):
+@app.post("/generate_mcq", response_model=Dict[str,str])
+async def generate_mcq_endpoint(request: MCQRequest) -> JSONResponse:
+    """
+    Endpoint to generate multiple-choice questions (MCQs).
+
+    Args:
+        request (MCQRequest): The request containing text, question type, and number of questions.
+
+    Returns:
+        JSONResponse: A JSON response containing the generated MCQ and its answer.
+    """
+
     try:
         # Call the generate_mcq function
         question_meta = generate_mcq(request.text, request.question_type, request.num_questions)
         mcq = question_meta.get("mcq", "Sorry, I couldn't generate the MCQ.")
-        print(mcq)
-        return JSONResponse(content=mcq)
+        mcq_answer = question_meta.get("mcq_answer", "Sorry, the answer is not available.")
+        response = {
+            "mcq": mcq,
+            "mcq_answer": mcq_answer
+        }
+        return JSONResponse(content=response)
     except ValueError as e:
+        logger.error(f"ValueError: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Unexpected error: {e}")

@@ -40,6 +40,7 @@ def create_table(table_name: str = "mcq_metadata"):
                     model TEXT,
                     completion TEXT,
                     mcq TEXT,
+                    mcq_answer TEXT,
                     execution_time TEXT,
                     input_tokens INTEGER,
                     output_tokens INTEGER,
@@ -56,8 +57,8 @@ def insert_metadata(metadata: Dict[str, str], table_name: str = "mcq_metadata"):
         cursor.execute(f'''
             INSERT INTO {table_name} (
                 question_type, system_prompt, user_prompt, model, 
-                completion, mcq, execution_time, input_tokens, output_tokens, timestamp
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                completion, mcq, mcq_answer, execution_time, input_tokens, output_tokens, timestamp
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             metadata['question_type'],
             metadata['system_prompt'],
@@ -65,6 +66,7 @@ def insert_metadata(metadata: Dict[str, str], table_name: str = "mcq_metadata"):
             metadata['model'],
             metadata['completion'],
             metadata['mcq'],
+            metadata['mcq_answer'],
             metadata['execution_time'],
             metadata['input_tokens'],
             metadata['output_tokens'],
@@ -73,9 +75,9 @@ def insert_metadata(metadata: Dict[str, str], table_name: str = "mcq_metadata"):
         conn.commit()
 
 
-def extract_output(input_str: str) -> str | None:
+def extract_output(input_str: str, item: str="QUESTION") -> str | None:
         # Use regex to extract content within <MCQ> and </MCQ> tags
-        pattern = re.compile(r"<MCQ>(.*?)</?MCQ>", re.DOTALL)
+        pattern = re.compile(rf"<{item}>(.*?)</?{item}>", re.DOTALL)
         match = pattern.search(input_str)
         if match:
             target_str = match.group(1).strip()
@@ -87,7 +89,7 @@ def extract_output(input_str: str) -> str | None:
         
         else:
             
-            logger.error(f"No <MCQ> tags found in '{input_str}'.")
+            logger.error(f"No desired tags found in '{input_str}'.")
             return None
 
 
@@ -119,7 +121,7 @@ def generate_mcq(text: str, question_type: str, num_questions=1, table_name="mcq
 
     # Initialize the agent with the prompt for generating MCQs
     question_generation_agent = Agent(question_type=question_type, 
-                  model="gpt-3.5-turbo",
+                  model="gpt-4o",
                   system_prompt=system_prompt,
                   user_prompt=user_prompt)
     
@@ -132,10 +134,35 @@ def generate_mcq(text: str, question_type: str, num_questions=1, table_name="mcq
     if generated_text:
 
         # first attempt: extract the mcq from the generated text using the MCQ tags
-        mcq_extracted = extract_output(generated_text)
+        mcq_extracted = extract_output(generated_text, item="QUESTION")
         if mcq_extracted:
             logger.info("MCQ extracted successfully using the MCQ tags from the generated text.")
             mcq_metadata["mcq"] = mcq_extracted
+            # extract answer from the generated text 
+            answer_extracted = extract_output(generated_text, item="ANSWER")
+            if answer_extracted:
+                logger.info("Answer extracted successfully using the ANSWER tags from the generated text.")
+                mcq_metadata["mcq_answer"] = answer_extracted
+            else:
+                logger.warning("Failed to extract answer using the ANSWER tags.")
+                        # Fetch the prompt using an llm-powered agent
+                mcq_answer_extractor_prompts = get_prompts("mcq_answer_extractor_prompts.yaml")
+                mcq_answer_extractor_system_prompt = mcq_answer_extractor_prompts.get("system_prompt", "")
+                mcq_answer_extractor_user_prompt = mcq_answer_extractor_prompts.get("user_prompt", "").format(text=generated_text)
+                # Add a mcq_extractor_agent to extract the MCQ from the messy generated text 
+                mcq_answer_extractor_agent = Agent(question_type=question_type, 
+                                model="gpt-3.5-turbo",
+                                system_prompt=mcq_answer_extractor_system_prompt,
+                                user_prompt=mcq_answer_extractor_user_prompt)
+                
+                mcq_answer_extracted_llm = mcq_answer_extractor_agent.completion_generation()
+                if mcq_answer_extracted_llm:
+                    logger.info("Answer extracted successfully using the mcq_answer_extractor_agent.")
+                    mcq_metadata["mcq_answer"] = mcq_answer_extracted_llm
+                else:
+                    logger.warning("Failed to extract answer using the mcq_answer_extractor_agent.")
+                    mcq_metadata["mcq_answer"] = "Sorry, the answer for this question was not provided."
+                
             # Insert the metadata into the database
             insert_metadata(mcq_metadata, table_name)
 

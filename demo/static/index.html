@@ -10,13 +10,13 @@
             margin: 0;
             padding: 0;
             display: flex;
-            flex-direction: column; /* Adjust to column to accommodate the top band */
+            flex-direction: column;
             height: 100vh;
             box-sizing: border-box;
         }
 
         .top-band {
-            background-color: #4b2e2e; /* Dark brown color */
+            background-color: #4b2e2e;
             color: white;
             text-align: center;
             padding: 15px 0;
@@ -29,7 +29,7 @@
             width: 100%;
             padding: 20px;
             box-sizing: border-box;
-            flex: 1; /* Allow the container to take the remaining space */
+            flex: 1;
         }
 
         .text-input, .options, .questions {
@@ -96,6 +96,28 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .mcq_question {
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .answer {
+            padding: 10px;
+            box-sizing: border-box;
+            text-align: center;
+            border-top: 1px dashed #ccc;
+            margin-top: 10px;
+        }
+
+        .answer button {
+            margin-top: 20px;
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -136,10 +158,6 @@
             const questionType = document.getElementById('question_type').value;
             const numQuestions = document.getElementById('num_questions').value;
 
-            console.log("text:", text);
-            console.log("questionType:", questionType);
-            console.log("numQuestions:", numQuestions);
-
             const spinner = document.getElementById('spinner');
             const questionsDiv = document.getElementById('questions');
 
@@ -163,16 +181,32 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
-                const questionString = await response.json();
-                console.log(questionString);
+                const questionData = await response.json();
+                const mcq = questionData.mcq;
+                const mcqAnswer = questionData.mcq_answer;
 
                 questionsDiv.innerHTML = '<h2>Generated Questions</h2>'; // Reset the content
                 spinner.style.display = 'none'; // Hide the spinner
 
-                // Since questionString is a string, display it directly
-                const questionElement = document.createElement('div');
-                questionElement.innerHTML = `${questionString}`;
-                questionsDiv.appendChild(questionElement);
+                // Create divs for MCQ and answer
+                const mcqDiv = document.createElement('div');
+                mcqDiv.className = 'mcq_question';
+                mcqDiv.innerHTML = `<p>${mcq}</p>`;
+
+                const answerDiv = document.createElement('div');
+                answerDiv.className = 'answer';
+
+                const checkAnswerButton = document.createElement('button');
+                checkAnswerButton.textContent = 'Check Answer';
+                checkAnswerButton.onclick = function() {
+                    checkAnswerButton.style.display = 'none';
+                    answerDiv.innerHTML = `<p><strong>Answer:</strong> ${mcqAnswer}</p>`;
+                };
+
+                answerDiv.appendChild(checkAnswerButton);
+
+                questionsDiv.appendChild(mcqDiv);
+                questionsDiv.appendChild(answerDiv);
 
             } catch (error) {
                 console.error('Error fetching questions:', error);
