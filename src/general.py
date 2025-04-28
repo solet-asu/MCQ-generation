@@ -29,3 +29,36 @@ def read_text_file(file_path: str) -> str:
         return "Error: File not found."
     except Exception as e:
         return f"Error: {e}"
+    
+
+def count_words(input_string: str) -> int:
+    """
+    Count the number of words in a given string.
+
+    Args:
+        input_string (str): The string to count words in.
+
+    Returns:
+        int: The number of words in the string.
+    """
+    # Split the string into words using whitespace as the delimiter
+    words = input_string.split()
+    
+    # Return the number of words
+    return len(words)
+
+def count_paragraphs(input_string: str) -> int:
+    """
+    Count the number of paragraphs in a given string.
+
+    Args:
+        input_string (str): The string to count paragraphs in.
+
+    Returns:
+        int: The number of paragraphs in the string.
+    """
+    # Split the string into paragraphs using newline characters as the delimiter
+    paragraphs = input_string.split('\n')
+    
+    # Filter out empty strings and return the count
+    return len([p for p in paragraphs if p.strip()])
