@@ -93,14 +93,13 @@ def extract_output(input_str: str, item: str="QUESTION") -> str | None:
             return None
 
 
-def generate_mcq(text: str, question_type: str, num_questions=1, table_name="mcq_metadata") -> dict:
+def generate_mcq(text: str, question_type: str, table_name="mcq_metadata") -> dict:
     """
     Generates multiple-choice questions based on the provided text and question type.
 
     Args:
         text (str): The text to generate questions from.
         question_type (str): The type of question to generate. Options are "details", "inference", or "main_idea".
-        num_questions (int): The number of questions to generate.
 
     Returns:
         dict: A dictionary containing the generated questions and their options.

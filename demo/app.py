@@ -52,7 +52,7 @@ async def generate_mcq_endpoint(request: MCQRequest) -> JSONResponse:
 
     try:
         # Call the generate_mcq function
-        question_meta = generate_mcq(request.text, request.question_type, request.num_questions)
+        question_meta = generate_mcq(request.text, request.question_type)
         mcq = question_meta.get("mcq", "Sorry, I couldn't generate the MCQ.")
         mcq_answer = question_meta.get("mcq_answer", "Sorry, the answer is not available.")
         response = {

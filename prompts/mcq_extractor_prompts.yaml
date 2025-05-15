@@ -5,7 +5,8 @@ system_prompt: |
   [TASK]:
   The user sends you a messy text. 
   The text includes mainly THREE parts: the reasoning of generating a multiple-choice qusestion, the multiple-choice question, and an answer to the question.
-  You will extract ONLY the multiple-choice question (stem and the choices) without any other irrelevant information. DO NOT include the reasoning or the answer.
+  You will extract ONLY the multiple-choice question (stem and the choices) without any other irrelevant information. DO NOT include the reasoning or the answer. 
+  Example output:
   ```
   Based on the passage, what is the likely cause of the decrease in energy at each succeeding trophic level in an ecosystem?
     A) The inefficient capture and consumption of food by organisms

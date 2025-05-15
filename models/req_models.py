@@ -5,4 +5,3 @@ from pydantic import BaseModel
 class MCQRequest(BaseModel):
     text: str
     question_type: str
-    num_questions: int = 1

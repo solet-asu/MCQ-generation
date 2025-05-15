@@ -138,10 +138,6 @@
                 <option value="inference">Inference</option>
                 <option value="main_idea">Main Idea</option>
             </select>
-
-            <label for="num_questions">Number of Questions:</label>
-            <input type="number" id="num_questions" name="num_questions" value="1" min="1" required>
-
             <input type="submit" value="Generate Questions" onclick="generateQuestions()">
         </div>
 
@@ -156,7 +152,6 @@
         async function generateQuestions() {
             const text = document.getElementById('text').value;
             const questionType = document.getElementById('question_type').value;
-            const numQuestions = document.getElementById('num_questions').value;
 
             const spinner = document.getElementById('spinner');
             const questionsDiv = document.getElementById('questions');
@@ -172,8 +167,7 @@
                     },
                     body: JSON.stringify({
                         text: text,
-                        question_type: questionType,
-                        num_questions: parseInt(numQuestions)
+                        question_type: questionType
                     })
                 });
 
