@@ -24,14 +24,18 @@ ensure_model_installed()
 nlp = spacy.load(MODEL_NAME)
 
 
-def split_into_chunks(text: str, min_words: int = 200, max_words: int = 500) -> List[str]:
+def split_into_chunks(text: str, min_words: int = 300, max_para_len: int = 600, min_para_len: int = 100) -> List[str]:
     """
     Splits the text into chunks based on paragraph boundaries and sentence boundaries for long paragraphs.
-    
-    :param text: The raw text to be processed.
-    :param min_words: Minimum number of words in a chunk.
-    :param max_words: Maximum number of words in a chunk.
-    :return: A list of text chunks.
+
+    Args:
+        text (str): The raw text to be processed.
+        min_words (int): Minimum number of words in a chunk.
+        max_para_len (int): Maximum number of words for chunking a long paragraph (> 1000).
+        min_para_len (int): Minimum number of words for chunking a long paragraph.
+
+    Returns:
+        List[str]: A list of text chunks.
     """
     paragraphs = text.split('\n\n')  # Split text into paragraphs
     chunks = []
@@ -42,7 +46,7 @@ def split_into_chunks(text: str, min_words: int = 200, max_words: int = 500) -> 
         doc = nlp(paragraph)
         paragraph_word_count = len(doc)
 
-        if paragraph_word_count > 500:
+        if paragraph_word_count > 1000:
             # Split long paragraphs into smaller chunks using sentence boundaries
             sentence_chunk = []
             sentence_word_count = 0
@@ -51,19 +55,26 @@ def split_into_chunks(text: str, min_words: int = 200, max_words: int = 500) -> 
                 sentence_word_count += len(sentence)
                 sentence_chunk.append(sentence.text)
 
-                if sentence_word_count >= max_words:
+                if sentence_word_count >= max_para_len:
                     chunks.append(' '.join(sentence_chunk))
                     sentence_chunk = []
                     sentence_word_count = 0
 
             if sentence_chunk:
-                chunks.append(' '.join(sentence_chunk))
+                leftover_chunk = ' '.join(sentence_chunk)
+                leftover_word_count = len(nlp(leftover_chunk))
+
+                if chunks and leftover_word_count < min_para_len:
+                    # Append the leftover chunk to the last chunk
+                    chunks[-1] += ' ' + leftover_chunk
+                else:
+                    chunks.append(leftover_chunk)
         else:
             # Add paragraph to the current chunk
             current_chunk.append(paragraph)
             current_word_count += paragraph_word_count
 
-            if min_words <= current_word_count <= max_words:
+            if current_word_count >= min_words:
                 chunks.append(' '.join(current_chunk))
                 current_chunk = []
                 current_word_count = 0
