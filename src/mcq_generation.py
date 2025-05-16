@@ -1,6 +1,7 @@
 from src.prompt_fetch import *
 from src.agent import Agent
 from src.general import *
+from src.database_handler import *
 import sqlite3
 from typing import Dict
 from datetime import datetime 
@@ -15,64 +16,7 @@ question_type_prompt_map = {
 
 
 # Define the database file
-DATABASE_FILE = '../database/mcq_metadata.db'
-
-def table_exists(table_name: str) -> bool:
-    """Check if a table exists in the database."""
-    with sqlite3.connect(DATABASE_FILE) as conn:
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT name FROM sqlite_master WHERE type='table' AND name=?
-        ''', (table_name,))
-        return cursor.fetchone() is not None
-
-def create_table(table_name: str = "mcq_metadata"):
-    """Create the table if it doesn't exist."""
-    if not table_exists(table_name):
-        with sqlite3.connect(DATABASE_FILE) as conn:
-            cursor = conn.cursor()
-            cursor.execute(f'''
-                CREATE TABLE {table_name} (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    question_type TEXT,
-                    system_prompt TEXT,
-                    user_prompt TEXT,
-                    model TEXT,
-                    completion TEXT,
-                    mcq TEXT,
-                    mcq_answer TEXT,
-                    execution_time TEXT,
-                    input_tokens INTEGER,
-                    output_tokens INTEGER,
-                    timestamp TEXT
-                )
-            ''')
-            conn.commit()
-
-def insert_metadata(metadata: Dict[str, str], table_name: str = "mcq_metadata"):
-    """Insert table into the database."""
-    timestamp = datetime.now().isoformat()
-    with sqlite3.connect(DATABASE_FILE) as conn:
-        cursor = conn.cursor()
-        cursor.execute(f'''
-            INSERT INTO {table_name} (
-                question_type, system_prompt, user_prompt, model, 
-                completion, mcq, mcq_answer, execution_time, input_tokens, output_tokens, timestamp
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            metadata['question_type'],
-            metadata['system_prompt'],
-            metadata['user_prompt'],
-            metadata['model'],
-            metadata['completion'],
-            metadata['mcq'],
-            metadata['mcq_answer'],
-            metadata['execution_time'],
-            metadata['input_tokens'],
-            metadata['output_tokens'],
-            timestamp
-        ))
-        conn.commit()
+database_file = '../database/mcq_metadata.db'
 
 
 def extract_output(input_str: str, item: str="QUESTION") -> str | None:
@@ -92,7 +36,7 @@ def extract_output(input_str: str, item: str="QUESTION") -> str | None:
             logger.error(f"No desired tags found in '{input_str}'.")
             return None
 
-
+# TODO Revise this function as generic to all types of questions. 
 def generate_mcq(text: str, question_type: str, table_name="mcq_metadata") -> dict:
     """
     Generates multiple-choice questions based on the provided text and question type.
@@ -106,7 +50,7 @@ def generate_mcq(text: str, question_type: str, table_name="mcq_metadata") -> di
     """
     
     # Ensure the table exists before proceeding
-    create_table(table_name)
+    create_table(table_name, database_file)
     
     # Determine the prompt file based on the question type
     prompt_file = question_type_prompt_map.get(question_type.lower())
@@ -183,24 +127,24 @@ def generate_mcq(text: str, question_type: str, table_name="mcq_metadata") -> di
                 logger.info("MCQ extracted successfully using the mcq_extractor_agent.")
                 mcq_metadata["mcq"] = mcq_extracted_llm
                 # Insert the metadata into the database
-                insert_metadata(mcq_metadata, table_name)
+                insert_metadata(mcq_metadata, table_name, database_file)
 
                 mcq_extractor_metadata = mcq_extractor_agent.get_metadata()
                 mcq_extractor_metadata["mcq"] = mcq_extracted_llm
 
                 # Insert the metadata into the database
-                insert_metadata(mcq_extractor_metadata, table_name)
+                insert_metadata(mcq_extractor_metadata, table_name, database_file)
 
             else:
                 logger.warning("Failed to extract MCQ using the mcq_extractor_agent. Return a sorry message")
                 sorry_message = "Sorry, We couldn't generate a multiple-choice question for you. Please try again."
                 mcq_metadata["mcq"] = sorry_message
                 # Insert the metadata into the database
-                insert_metadata(mcq_metadata, table_name)    
+                insert_metadata(mcq_metadata, table_name, database_file)    
 
                 mcq_extractor_metadata["mcq"] = sorry_message
                 # Insert the metadata into the database
-                insert_metadata(mcq_extractor_metadata, table_name)           
+                insert_metadata(mcq_extractor_metadata, table_name, database_file)           
 
     return mcq_metadata
 
