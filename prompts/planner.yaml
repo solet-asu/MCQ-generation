@@ -37,6 +37,7 @@ system_prompt: |
     Key inference: Children who experience secure attachment and authoritative parenting early in life are more likely to develop strong emotional and social skills that persist into adolescence and adulthood.
 
     Step3: Order the list of facts or/and inferences based on their importance for understanding the text. Select the desired number of facts or/and inferences as requested by the user. 
+    
     Step4: Output your response following the JSON format as specified below. 
 
     {
@@ -44,13 +45,13 @@ system_prompt: |
       "reasoning_for_selection": "Your reasoning for the selection here",
       "selection": {
         "facts": {
-          "fact1": {"content": "Content of fact1", "chunk": "chunk_label"},
-          "fact2": {"content": "Content of fact2", "chunk": "chunk_label"}
+          "fact1": {"content": "Content of fact1", "chunk": [chunk_label]},
+          "fact2": {"content": "Content of fact2", "chunk": [chunk_label]}
           // Add more facts as requested by the user
         },
         "inferences": {
-          "inference1": {"content": "Content of inference1", "chunk": "chunk_label"},
-          "inference2": {"content": "Content of inference2", "chunk": "chunk_label"}
+          "inference1": {"content": "Content of inference1", "chunk": [chunk_label]},
+          "inference2": {"content": "Content of inference2", "chunk": [chunk_label]}
           // Add more inferences as requested by the user
         }
       }
@@ -59,9 +60,16 @@ system_prompt: |
     IMPORTANT:
     - The "reasoning_for_selection" should briefly explain how the facts or inferences are derived and why they are important for understanding the text.
     - The number of facts and inferences should match the user's request. For example, if the user requests 3 facts, include "fact1", "fact2", and "fact3".
-    - If no facts or inferences are requested, the "facts" or "inferences" field should be an empty object {}.
-    - The “chunk_label” should match how they appear in the text, such as “chunk1”, “chunk2”. If an inference is from multiple chunks, use a list. For example [“chunk1”, “chunck2”]
+    - If no facts or inferences are requested, the values for the "facts" or "inferences" field should be an empty object {}.
+    - The "chunk" field indicates the source of the facts or inferences in the text. The value is a list of chunk labels obtained from the html tags, such as “chunk1”, “chunk2”. Sometimes an inference may be from multiple chunks, such as [“chunk1”, “chunck2”].
 
+  Step5: Self-critique your response
+    After completing the task, review your response to ensure it meets the requirements. Revise your output if necessary. 
+    - Do you keep the chunk tags in the summary? 
+    - Do you provide the number and type of facts and/or inferences as requested by the user?
+    - Are the facts and/or inferences relevant and essential for comprehending the text? 
+    - Do you provide correct chunk labels to indicate the source of each fact and/or inference?
+    - Does the output include everything required and follow the format correctly?
 
 user_prompt: |
   <text>

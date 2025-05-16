@@ -24,7 +24,7 @@ ensure_model_installed()
 nlp = spacy.load(MODEL_NAME)
 
 
-def split_into_chunks(text: str, min_words: int = 200, max_words: int = 300) -> List[str]:
+def split_into_chunks(text: str, min_words: int = 200, max_words: int = 500) -> List[str]:
     """
     Splits the text into chunks based on paragraph boundaries and sentence boundaries for long paragraphs.
     
