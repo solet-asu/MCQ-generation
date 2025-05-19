@@ -1,5 +1,6 @@
 from src.text_processing import add_chunk_markers
-
+import uuid
+import logging
 
 # Step 1: text preprocessing:
 def question_generation_workflow(text:str, facts:int, inferences:int, main_idea:int) -> list[dict[str, str]]:
@@ -10,7 +11,7 @@ def question_generation_workflow(text:str, facts:int, inferences:int, main_idea:
     :param facts: The number of fact-based questions to generate.
     :param inferences: The number of inference-based questions to generate.
     :param main_idea: The number of main idea questions to generate.
-    :return: A list of dictionaries containing the generated questions and their answers. For example:
+    :return: A list of dictionaries containing the generated Multiple choice questions and their answers. For example:
        [
         {
             "question_type": "facts",
@@ -31,6 +32,11 @@ def question_generation_workflow(text:str, facts:int, inferences:int, main_idea:
     chunked_text = add_chunk_markers(text)
 
     # step 2: make a plan
+    # Generate a unique invocation ID for this workflow run
+    invocation_id = str(uuid.uuid4())
+    logging.info(f"Invocation ID: {invocation_id}")
+
+
     
 
 

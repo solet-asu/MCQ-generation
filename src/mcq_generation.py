@@ -2,21 +2,14 @@ from src.prompt_fetch import *
 from src.agent import Agent
 from src.general import *
 from src.database_handler import *
-import sqlite3
-from typing import Dict
-from datetime import datetime 
 import re
 
 # dictionary map to link question types to their respective prompts
 question_type_prompt_map = {
-    "details": "details_prompts.yaml",
+    "fact": "fact_prompts.yaml",
     "inference": "inference_prompts.yaml",
     "main_idea": "main_idea_prompts.yaml",
 }
-
-
-# Define the database file
-database_file = '../database/mcq_metadata.db'
 
 
 def extract_output(input_str: str, item: str="QUESTION") -> str | None:
@@ -37,7 +30,12 @@ def extract_output(input_str: str, item: str="QUESTION") -> str | None:
             return None
 
 # TODO Revise this function as generic to all types of questions. 
-def generate_mcq(text: str, question_type: str, table_name="mcq_metadata") -> dict:
+def generate_mcq(invocation_id, 
+                 model: str, 
+                 text: str, 
+                 question_type: str, 
+                 table_name="mcq_metadata", 
+                 database_file = '../database/mcq_metadata.db') -> dict:
     """
     Generates multiple-choice questions based on the provided text and question type.
 
@@ -63,15 +61,16 @@ def generate_mcq(text: str, question_type: str, table_name="mcq_metadata") -> di
     user_prompt = prompts.get("user_prompt", "").format(text=text)
 
     # Initialize the agent with the prompt for generating MCQs
-    question_generation_agent = Agent(question_type=question_type, 
-                  model="gpt-4o",
+    question_generation_agent = Agent(
+                  model=model,
                   system_prompt=system_prompt,
                   user_prompt=user_prompt)
     
     # First attempt to generate the MCQ
     generated_text = question_generation_agent.completion_generation()
     mcq_metadata = question_generation_agent.get_metadata()
-
+    mcq_metadata["question_type"] = question_type
+    mcq_metadata["invocation_id"] = invocation_id
 
     #### The following code is used for extracting the MCQ from the generated text
     if generated_text:
@@ -93,7 +92,7 @@ def generate_mcq(text: str, question_type: str, table_name="mcq_metadata") -> di
                 mcq_answer_extractor_system_prompt = mcq_answer_extractor_prompts.get("system_prompt", "")
                 mcq_answer_extractor_user_prompt = mcq_answer_extractor_prompts.get("user_prompt", "").format(text=generated_text)
                 # Add a mcq_extractor_agent to extract the MCQ from the messy generated text 
-                mcq_answer_extractor_agent = Agent(question_type=question_type, 
+                mcq_answer_extractor_agent = Agent(
                                 model="gpt-3.5-turbo",
                                 system_prompt=mcq_answer_extractor_system_prompt,
                                 user_prompt=mcq_answer_extractor_user_prompt)
@@ -107,7 +106,7 @@ def generate_mcq(text: str, question_type: str, table_name="mcq_metadata") -> di
                     mcq_metadata["mcq_answer"] = "Sorry, the answer for this question was not provided."
                 
             # Insert the metadata into the database
-            insert_metadata(mcq_metadata, table_name)
+            insert_metadata(mcq_metadata, table_name, database_file)
 
         else:
 
@@ -116,7 +115,7 @@ def generate_mcq(text: str, question_type: str, table_name="mcq_metadata") -> di
             mcq_extractor_system_prompt = mcq_extractor_prompts.get("system_prompt", "")
             mcq_extractor_user_prompt = mcq_extractor_prompts.get("user_prompt", "").format(text=generated_text)
             # Add a mcq_extractor_agent to extract the MCQ from the messy generated text 
-            mcq_extractor_agent = Agent(question_type=question_type, 
+            mcq_extractor_agent = Agent(
                             model="gpt-3.5-turbo",
                             system_prompt=mcq_extractor_system_prompt,
                             user_prompt=mcq_extractor_user_prompt)
@@ -135,13 +134,14 @@ def generate_mcq(text: str, question_type: str, table_name="mcq_metadata") -> di
                 # Insert the metadata into the database
                 insert_metadata(mcq_extractor_metadata, table_name, database_file)
 
+
             else:
                 logger.warning("Failed to extract MCQ using the mcq_extractor_agent. Return a sorry message")
                 sorry_message = "Sorry, We couldn't generate a multiple-choice question for you. Please try again."
                 mcq_metadata["mcq"] = sorry_message
                 # Insert the metadata into the database
-                insert_metadata(mcq_metadata, table_name, database_file)    
-
+                insert_metadata(mcq_metadata, table_name, database_file)
+ 
                 mcq_extractor_metadata["mcq"] = sorry_message
                 # Insert the metadata into the database
                 insert_metadata(mcq_extractor_metadata, table_name, database_file)           

@@ -1,14 +1,12 @@
 import sqlite3
-from typing import List
 import csv
 import os
 import sqlite3
-from typing import Dict
+from typing import List, Dict, Any
 from datetime import datetime 
+import logging
 
-
-# Define the database file
-DATABASE_FILE = '../database/mcq_metadata.db'
+from models.table_schema import TABLE_SCHEMAS
 
 def table_exists(table_name: str, database_file: str) -> bool:
     """Check if a table exists in the database."""
@@ -19,53 +17,54 @@ def table_exists(table_name: str, database_file: str) -> bool:
         ''', (table_name,))
         return cursor.fetchone() is not None
 
-def create_table(table_name: str = "mcq_metadata", database_file: str ="../database/mcq_metadata.db"):
-    """Create the table if it doesn't exist."""
-    if not table_exists(table_name):
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+
+
+def create_table(table_name: str, database_file: str) -> None:
+    """Create a table with the given schema if it doesn't exist."""
+    try:
         with sqlite3.connect(database_file) as conn:
             cursor = conn.cursor()
+            columns = ", ".join([f"{col} {dtype}" for col, dtype in TABLE_SCHEMAS.items()])
             cursor.execute(f'''
-                CREATE TABLE {table_name} (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    question_type TEXT,
-                    system_prompt TEXT,
-                    user_prompt TEXT,
-                    model TEXT,
-                    completion TEXT,
-                    mcq TEXT,
-                    mcq_answer TEXT,
-                    execution_time TEXT,
-                    input_tokens INTEGER,
-                    output_tokens INTEGER,
-                    timestamp TEXT
+                CREATE TABLE IF NOT EXISTS {table_name} (
+                    {columns}
                 )
             ''')
             conn.commit()
+            logging.info(f"Table '{table_name}' created or already exists.")
+    except sqlite3.Error as e:
+        logging.error(f"Error creating table '{table_name}': {e}")
 
-def insert_metadata(metadata: Dict[str, str], table_name: str = "mcq_metadata", database_file: str = "../database/mcq_metadata.db"):
-    """Insert table into the database."""
-    timestamp = datetime.now().isoformat()
-    with sqlite3.connect(database_file) as conn:
-        cursor = conn.cursor()
-        cursor.execute(f'''
-            INSERT INTO {table_name} (
-                question_type, system_prompt, user_prompt, model, 
-                completion, mcq, mcq_answer, execution_time, input_tokens, output_tokens, timestamp
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            metadata['question_type'],
-            metadata['system_prompt'],
-            metadata['user_prompt'],
-            metadata['model'],
-            metadata['completion'],
-            metadata['mcq'],
-            metadata['mcq_answer'],
-            metadata['execution_time'],
-            metadata['input_tokens'],
-            metadata['output_tokens'],
-            timestamp
-        ))
-        conn.commit()
+def insert_metadata(
+    table_name: str,
+    metadata: Dict[str, Any],
+    database_file: str,
+) -> None:
+    """Insert metadata into a table dynamically."""
+    try:
+        schema = TABLE_SCHEMAS[table_name]
+        metadata["timestamp"] = datetime.now().isoformat()
+        
+        columns = [col for col in schema if col != "id"]
+        placeholders = ", ".join(["?"] * len(columns))
+        column_names = ", ".join(columns)
+        values = [metadata[col] for col in columns]
+        
+        with sqlite3.connect(database_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"INSERT INTO {table_name} ({column_names}) VALUES ({placeholders})",
+                values
+            )
+            conn.commit()
+            logging.info(f"Metadata inserted into '{table_name}'.")
+    except KeyError as e:
+        logging.error(f"Table '{table_name}' not found in schema: {e}")
+    except sqlite3.Error as e:
+        logging.error(f"Error inserting metadata into '{table_name}': {e}")
 
 
 def get_extraction_values(table_name: str, database_file: str) -> List[str]:

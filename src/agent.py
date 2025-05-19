@@ -22,7 +22,6 @@ if not api_key:
 
 # TODO # add answer and answer extraction method
 class Agent(BaseModel):
-    question_type: str | None = None
     model: str | None = None
     system_prompt: str | None = None
     user_prompt: str | None = None
@@ -33,7 +32,6 @@ class Agent(BaseModel):
 
     def get_metadata(self) -> dict:
         return {
-            "question_type": self.question_type,
             "system_prompt": self.system_prompt,
             "user_prompt": self.user_prompt,
             "model": self.model,

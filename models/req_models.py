@@ -4,6 +4,6 @@ from pydantic import BaseModel
 
 class MCQRequest(BaseModel):
     text: str
-    facts: int
-    inferences: int
+    fact: int
+    inference: int
     main_idea: int
