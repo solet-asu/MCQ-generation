@@ -1,150 +1,153 @@
-from src.prompt_fetch import *
+import re
+import logging
+from typing import Dict, Optional
+from src.prompt_fetch import get_prompts
 from src.agent import Agent
 from src.general import *
 from src.database_handler import *
-import re
 
-# dictionary map to link question types to their respective prompts
-question_type_prompt_map = {
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+# Dictionary map to link question types to their respective prompts
+QUESTION_TYPE_PROMPT_MAP = {
     "fact": "fact_prompts.yaml",
     "inference": "inference_prompts.yaml",
     "main_idea": "main_idea_prompts.yaml",
 }
 
+def extract_output(input_str: str, item: str = "QUESTION") -> Optional[str]:
+    """
+    Extract content within specified tags from a string.
 
-def extract_output(input_str: str, item: str="QUESTION") -> str | None:
-        # Use regex to extract content within <MCQ> and </MCQ> tags
-        pattern = re.compile(rf"<{item}>(.*?)</?{item}>", re.DOTALL)
-        match = pattern.search(input_str)
-        if match:
-            target_str = match.group(1).strip()
+    Args:
+        input_str (str): The input string containing the content.
+        item (str): The tag to search for.
 
-            # Replace escaped newlines and tabs that are within the string
-            target_str = target_str.replace("\\n", "\n").replace("\\t", "\t")
+    Returns:
+        Optional[str]: The extracted content or None if not found.
+    """
+    pattern = re.compile(rf"<{item}>(.*?)</?{item}>", re.DOTALL)
+    match = pattern.search(input_str)
+    if match:
+        target_str = match.group(1).strip()
+        target_str = target_str.replace("\\n", "\n").replace("\\t", "\t")
+        return target_str
+    else:
+        logger.error(f"No desired tags found in '{input_str}'.")
+        return None
 
-            return target_str
-        
-        else:
-            
-            logger.error(f"No desired tags found in '{input_str}'.")
-            return None
-
-# TODO Revise this function as generic to all types of questions. 
-def generate_mcq(invocation_id, 
+def generate_mcq(invocation_id: str, 
                  model: str, 
-                 text: str, 
-                 question_type: str, 
-                 table_name="mcq_metadata", 
-                 database_file = '../database/mcq_metadata.db') -> dict:
+                 task: Dict, 
+                 table_name: str = "mcq_metadata", 
+                 database_file: str = '../database/mcq_metadata.db') -> Dict:
     """
     Generates multiple-choice questions based on the provided text and question type.
 
     Args:
-        text (str): The text to generate questions from.
-        question_type (str): The type of question to generate. Options are "details", "inference", or "main_idea".
+        invocation_id (str): Unique identifier for the invocation.
+        model (str): The model to use for generating questions.
+        task (Dict): The task details including text and question type.
+        table_name (str): The database table name.
+        database_file (str): The path to the database file.
 
     Returns:
-        dict: A dictionary containing the generated questions and their options.
+        Dict: A dictionary containing the generated questions and their options.
     """
-    
-    # Ensure the table exists before proceeding
     create_table(table_name, database_file)
     
-    # Determine the prompt file based on the question type
-    prompt_file = question_type_prompt_map.get(question_type.lower())
+    question_type = task.get("question_type", "").lower()
+    prompt_file = QUESTION_TYPE_PROMPT_MAP.get(question_type)
     if prompt_file is None:
-        raise ValueError(f"Invalid question type: {question_type}. Valid options are: {', '.join(question_type_prompt_map.keys())}.")
+        raise ValueError(f"Invalid question type: {question_type}. Valid options are: {', '.join(QUESTION_TYPE_PROMPT_MAP.keys())}.")
     
-    # Fetch the prompt for generating MCQs
     prompts = get_prompts(prompt_file)
+    text = task.get("text", "")
     system_prompt = prompts.get("system_prompt", "")
-    user_prompt = prompts.get("user_prompt", "").format(text=text)
+    user_prompt = prompts.get("user_prompt", "").format(
+        content=task.get("content", ""),
+        text=text,
+        context=task.get("context", "")
+    )
 
-    # Initialize the agent with the prompt for generating MCQs
     question_generation_agent = Agent(
-                  model=model,
-                  system_prompt=system_prompt,
-                  user_prompt=user_prompt)
+        model=model,
+        system_prompt=system_prompt,
+        user_prompt=user_prompt
+    )
     
-    # First attempt to generate the MCQ
     generated_text = question_generation_agent.completion_generation()
     mcq_metadata = question_generation_agent.get_metadata()
-    mcq_metadata["question_type"] = question_type
-    mcq_metadata["invocation_id"] = invocation_id
+    mcq_metadata.update({
+        "question_type": question_type,
+        "invocation_id": invocation_id
+    })
 
-    #### The following code is used for extracting the MCQ from the generated text
     if generated_text:
-
-        # first attempt: extract the mcq from the generated text using the MCQ tags
         mcq_extracted = extract_output(generated_text, item="QUESTION")
         if mcq_extracted:
             logger.info("MCQ extracted successfully using the MCQ tags from the generated text.")
             mcq_metadata["mcq"] = mcq_extracted
-            # extract answer from the generated text 
             answer_extracted = extract_output(generated_text, item="ANSWER")
             if answer_extracted:
                 logger.info("Answer extracted successfully using the ANSWER tags from the generated text.")
                 mcq_metadata["mcq_answer"] = answer_extracted
             else:
                 logger.warning("Failed to extract answer using the ANSWER tags.")
-                        # Fetch the prompt using an llm-powered agent
-                mcq_answer_extractor_prompts = get_prompts("mcq_answer_extractor_prompts.yaml")
-                mcq_answer_extractor_system_prompt = mcq_answer_extractor_prompts.get("system_prompt", "")
-                mcq_answer_extractor_user_prompt = mcq_answer_extractor_prompts.get("user_prompt", "").format(text=generated_text)
-                # Add a mcq_extractor_agent to extract the MCQ from the messy generated text 
-                mcq_answer_extractor_agent = Agent(
-                                model="gpt-3.5-turbo",
-                                system_prompt=mcq_answer_extractor_system_prompt,
-                                user_prompt=mcq_answer_extractor_user_prompt)
-                
-                mcq_answer_extracted_llm = mcq_answer_extractor_agent.completion_generation()
-                if mcq_answer_extracted_llm:
-                    logger.info("Answer extracted successfully using the mcq_answer_extractor_agent.")
-                    mcq_metadata["mcq_answer"] = mcq_answer_extracted_llm
-                else:
-                    logger.warning("Failed to extract answer using the mcq_answer_extractor_agent.")
-                    mcq_metadata["mcq_answer"] = "Sorry, the answer for this question was not provided."
-                
-            # Insert the metadata into the database
+                mcq_metadata["mcq_answer"] = extract_answer_with_agent(generated_text)
             insert_metadata(mcq_metadata, table_name, database_file)
-
         else:
-
-            # Fetch the prompt using an llm-powered agent
-            mcq_extractor_prompts = get_prompts("mcq_extractor_prompts.yaml")
-            mcq_extractor_system_prompt = mcq_extractor_prompts.get("system_prompt", "")
-            mcq_extractor_user_prompt = mcq_extractor_prompts.get("user_prompt", "").format(text=generated_text)
-            # Add a mcq_extractor_agent to extract the MCQ from the messy generated text 
-            mcq_extractor_agent = Agent(
-                            model="gpt-3.5-turbo",
-                            system_prompt=mcq_extractor_system_prompt,
-                            user_prompt=mcq_extractor_user_prompt)
-            
-            mcq_extracted_llm = mcq_extractor_agent.completion_generation()
-
-            if mcq_extracted_llm:
-                logger.info("MCQ extracted successfully using the mcq_extractor_agent.")
-                mcq_metadata["mcq"] = mcq_extracted_llm
-                # Insert the metadata into the database
-                insert_metadata(mcq_metadata, table_name, database_file)
-
-                mcq_extractor_metadata = mcq_extractor_agent.get_metadata()
-                mcq_extractor_metadata["mcq"] = mcq_extracted_llm
-
-                # Insert the metadata into the database
-                insert_metadata(mcq_extractor_metadata, table_name, database_file)
-
-
-            else:
-                logger.warning("Failed to extract MCQ using the mcq_extractor_agent. Return a sorry message")
-                sorry_message = "Sorry, We couldn't generate a multiple-choice question for you. Please try again."
-                mcq_metadata["mcq"] = sorry_message
-                # Insert the metadata into the database
-                insert_metadata(mcq_metadata, table_name, database_file)
- 
-                mcq_extractor_metadata["mcq"] = sorry_message
-                # Insert the metadata into the database
-                insert_metadata(mcq_extractor_metadata, table_name, database_file)           
-
+            mcq_metadata["mcq"] = extract_mcq_with_agent(generated_text)
+            insert_metadata(mcq_metadata, table_name, database_file)
     return mcq_metadata
+
+def extract_answer_with_agent(generated_text: str) -> str:
+    """
+    Use an agent to extract the answer from the generated text.
+
+    Args:
+        generated_text (str): The text generated by the model.
+
+    Returns:
+        str: The extracted answer or a default message if extraction fails.
+    """
+    mcq_answer_extractor_prompts = get_prompts("mcq_answer_extractor_prompts.yaml")
+    mcq_answer_extractor_agent = Agent(
+        model="gpt-3.5-turbo",
+        system_prompt=mcq_answer_extractor_prompts.get("system_prompt", ""),
+        user_prompt=mcq_answer_extractor_prompts.get("user_prompt", "").format(text=generated_text)
+    )
+    mcq_answer_extracted_llm = mcq_answer_extractor_agent.completion_generation()
+    if mcq_answer_extracted_llm:
+        logger.info("Answer extracted successfully using the mcq_answer_extractor_agent.")
+        return mcq_answer_extracted_llm
+    else:
+        logger.warning("Failed to extract answer using the mcq_answer_extractor_agent.")
+        return "Sorry, the answer for this question was not provided."
+
+def extract_mcq_with_agent(generated_text: str) -> str:
+    """
+    Use an agent to extract the MCQ from the generated text.
+
+    Args:
+        generated_text (str): The text generated by the model.
+
+    Returns:
+        str: The extracted MCQ or a default message if extraction fails.
+    """
+    mcq_extractor_prompts = get_prompts("mcq_extractor_prompts.yaml")
+    mcq_extractor_agent = Agent(
+        model="gpt-3.5-turbo",
+        system_prompt=mcq_extractor_prompts.get("system_prompt", ""),
+        user_prompt=mcq_extractor_prompts.get("user_prompt", "").format(text=generated_text)
+    )
+    mcq_extracted_llm = mcq_extractor_agent.completion_generation()
+    if mcq_extracted_llm:
+        logger.info("MCQ extracted successfully using the mcq_extractor_agent.")
+        return mcq_extracted_llm
+    else:
+        logger.warning("Failed to extract MCQ using the mcq_extractor_agent. Returning a sorry message.")
+        return "Sorry, We couldn't generate a multiple-choice question for you. Please try again."
 

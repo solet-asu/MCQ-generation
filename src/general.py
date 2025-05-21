@@ -1,6 +1,11 @@
 import os
-from typing import List, Union
+from typing import List, Union, Dict
 import json
+import logging
+
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
 
 def get_files_in_directory(directory_path: str) -> List[str]:
     """
@@ -64,8 +69,7 @@ def count_paragraphs(input_string: str) -> int:
     # Filter out empty strings and return the count
     return len([p for p in paragraphs if p.strip()])
 
-import json
-from typing import Union
+
 
 def dict_check_and_convert(obj: Union[str, dict]) -> dict:
     """
@@ -90,3 +94,36 @@ def dict_check_and_convert(obj: Union[str, dict]) -> dict:
     else:
         print(f"Unsupported input type: {type(obj)}. Expected str or dict.")
         return {}
+    
+
+
+
+def extract_json_string(text: str) -> Dict:
+    """
+    Extract a valid JSON object from a string that may contain extra content
+    before or after the actual JSON. Returns the parsed JSON object as a dict.
+    
+    Raises ValueError if no valid JSON object can be found.
+    """
+    start = text.find('{')
+    if start == -1:
+        logging.error("No JSON object found in input string")
+        raise ValueError("No JSON object found in input string")
+
+    # Try to find the matching closing brace
+    brace_count = 0
+    for i in range(start, len(text)):
+        if text[i] == '{':
+            brace_count += 1
+        elif text[i] == '}':
+            brace_count -= 1
+            if brace_count == 0:
+                json_str = text[start:i+1]
+                try:
+                    return json.loads(json_str)
+                except json.JSONDecodeError as e:
+                    logging.error(f"Invalid JSON content: {e}")
+                    raise ValueError(f"Invalid JSON content: {e}")
+
+    logging.error("Could not find a complete JSON object in the input string")
+    raise ValueError("Could not find a complete JSON object in the input string")

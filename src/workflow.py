@@ -1,6 +1,7 @@
 from src.text_processing import add_chunk_markers
 from src.planner import generate_plan
 from src.controller_helper import create_task_list
+from src.mcq_generation import generate_mcq
 import uuid
 import logging
 
@@ -50,6 +51,21 @@ def question_generation_workflow(text:str, fact:int, inference:int, main_idea:in
     # Step 3: parse the plan and make a task list
 
     task_list = create_task_list(plan, fact, inference, main_idea)
+
+    # Step 4: generate questions
+    questions = []
+    for task in task_list:
+        question = generate_mcq(
+            invocation_id=invocation_id,
+            model="gpt-4o",
+            task=task,
+            table_name="mcq_metadata",
+            database_file='../database/mcq_metadata.db'
+        )
+        questions.append(question)
+
+
+
 
 
 

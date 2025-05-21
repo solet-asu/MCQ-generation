@@ -51,22 +51,7 @@ def generate_plan(invocation_id: str,
 
     #### The following code is used for extracting the plan from the generated text
     if generated_text:
-        logger.info("Plan generated successfully.")
-        # convert the generated text to a dictionary
-        try:
-            generated_text_dict = json.loads(generated_text)
-            logger.info("Generated text converted to dictionary successfully.") 
-        except json.JSONDecodeError:
-            logger.warning("Failed to convert generated text to dictionary. Attempting to extract using regex.")
-            # Use regex to extract the plan from the generated text
-            pattern = r"\{.*?\}"
-            matches = re.findall(pattern, generated_text)
-            if matches:
-                generated_text_dict = json.loads(matches[-1])
-                logger.info("Generated text extracted using regex successfully.") 
-            else:
-                logger.warning("Failed to extract generated text using regex.")
-                generated_text_dict = {}
+        generated_text_dict = extract_json_string(generated_text)
         
         # extract summary, facts, and inferences from the generated text
         summary = generated_text_dict.get("summary", "")

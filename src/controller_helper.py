@@ -160,8 +160,8 @@ def create_task_list(plan: Dict[str, Any], fact: int, inference: int, main_idea:
             fact_task ={
                 "question_type": "fact",
                 "content": a_fact.get("content", ""),
-                "text": extract_chunks(summary, a_fact.get("chunks", [])),
-                "context": extract_unlisted_chunks(summary, a_fact.get("chunks", [])),
+                "text": extract_chunks(summary, a_fact.get("chunk", [])),
+                "context": extract_unlisted_chunks(summary, a_fact.get("chunk", [])),
             }
             task_list.append(fact_task)
     
@@ -170,8 +170,8 @@ def create_task_list(plan: Dict[str, Any], fact: int, inference: int, main_idea:
             inference_task = {
                 "question_type": "inference",
                 "content": a_inference.get("content", ""),
-                "text": extract_chunks(summary, a_inference.get("chunks", [])),
-                "context": extract_unlisted_chunks(summary, a_inference.get("chunks", [])),
+                "text": extract_chunks(summary, a_inference.get("chunk", [])),
+                "context": extract_unlisted_chunks(summary, a_inference.get("chunk", [])),
             }
             task_list.append(inference_task)
     
