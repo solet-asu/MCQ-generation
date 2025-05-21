@@ -8,7 +8,7 @@ from datetime import datetime
 import re
 import json
 
-def generate_plan(invocation_id: str,
+async def generate_plan(invocation_id: str,
                   model: str,
                   text: str, 
                   fact: int, 
@@ -44,7 +44,7 @@ def generate_plan(invocation_id: str,
                   user_prompt=user_prompt)
     
     # First attempt to generate the plan
-    generated_text = planner_agent.completion_generation().strip()
+    generated_text = await planner_agent.completion_generation()
     plan_metadata = planner_agent.get_metadata()
     plan_metadata["invocation_id"] = invocation_id
 

@@ -3,34 +3,36 @@ import logging
 import os
 import re
 from datetime import datetime, timedelta
+from typing import Dict, Optional
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 from pydantic import BaseModel
-import tiktoken  
+import tiktoken
 
 from dotenv import load_dotenv
-# Load environment variables from .env file
 load_dotenv()
 
-
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+# Retrieve API key from environment variables
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
     logger.error("OPENAI_API_KEY is not set.")
     raise ValueError("OPENAI_API_KEY is not set.")
 
-# TODO # add answer and answer extraction method
 class Agent(BaseModel):
-    model: str | None = None
-    system_prompt: str | None = None
-    user_prompt: str | None = None
-    most_recent_completion: str | None = None
-    most_recent_execution_time: timedelta | None = None
-    input_tokens: int | None = None
-    output_tokens: int | None = None
+    model: Optional[str] = None
+    system_prompt: Optional[str] = None
+    user_prompt: Optional[str] = None
+    most_recent_completion: Optional[str] = None
+    most_recent_execution_time: Optional[timedelta] = None
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> Dict[str, Optional[str]]:
+        """Return metadata about the most recent completion."""
         return {
             "system_prompt": self.system_prompt,
             "user_prompt": self.user_prompt,
@@ -40,36 +42,41 @@ class Agent(BaseModel):
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
         }
-    
 
     def calculate_tokens(self, text: str) -> int:
-        # Initialize the tokenizer for the specific model
+        """Calculate the number of tokens in the given text."""
         tokenizer = tiktoken.encoding_for_model(self.model)
-        # Tokenize the text and return the number of tokens
         return len(tokenizer.encode(text))
 
-    def completion_generation(self):
+    async def completion_generation(self) -> str:
+        """Generate a completion using the OpenAI API."""
         start_time = datetime.now()
-        client = OpenAI(api_key=api_key)
+        client = AsyncOpenAI(api_key=api_key)
+
         messages = [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": self.user_prompt},
         ]
 
         # Calculate input tokens
-        self.input_tokens = sum(self.calculate_tokens(message["content"]) for message in messages)
+        self.input_tokens = sum(self.calculate_tokens(m["content"]) for m in messages)
 
-        response = client.chat.completions.create(model=self.model, messages=messages)
+        try:
+            response = await client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+            )
+            completion = response.choices[0].message.content
+            self.most_recent_completion = completion
 
-        completion = response.choices[0].message.content
-        self.most_recent_completion = completion
+            self.output_tokens = self.calculate_tokens(completion or "")
+            self.most_recent_execution_time = datetime.now() - start_time
 
-        # Calculate output tokens
-        self.output_tokens = self.calculate_tokens(completion)
+            if not completion:
+                logger.warning("Received empty completion.")
 
-        if completion is None:
-            logger.warning("Received empty completion.")
- 
-        self.most_recent_execution_time = datetime.now() - start_time
-        return completion
+            return completion
 
+        except Exception as e:
+            logger.error(f"Error during async completion: {e}")
+            raise

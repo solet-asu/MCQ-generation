@@ -6,7 +6,7 @@ import uuid
 import logging
 
 # Step 1: text preprocessing:
-def question_generation_workflow(text:str, fact:int, inference:int, main_idea:int) -> list[dict[str, str]]:
+async def question_generation_workflow(text:str, fact:int, inference:int, main_idea:int) -> list[dict[str, str]]:
     """
     Main function to generate questions based on the provided text and parameters.
     
@@ -39,7 +39,7 @@ def question_generation_workflow(text:str, fact:int, inference:int, main_idea:in
     invocation_id = str(uuid.uuid4())
     logging.info(f"Invocation ID: {invocation_id}")
 
-    plan = generate_plan(
+    plan = await generate_plan(
         invocation_id=invocation_id,
         model= "gpt-4o",
         text =chunked_text,
@@ -53,19 +53,7 @@ def question_generation_workflow(text:str, fact:int, inference:int, main_idea:in
     task_list = create_task_list(plan, fact, inference, main_idea)
 
     # Step 4: generate questions
-    questions = []
-    for task in task_list:
-        question = generate_mcq(
-            invocation_id=invocation_id,
-            model="gpt-4o",
-            task=task,
-            table_name="mcq_metadata",
-            database_file='../database/mcq_metadata.db'
-        )
-        questions.append(question)
-
-
-
+    questions_list = await generate_all_mcqs(task_list, invocation_id, model="gpt-4o", table_name="mcq_metadata", database_file="../database/mcq_metadata.db")
 
 
 
