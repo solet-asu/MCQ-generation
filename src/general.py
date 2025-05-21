@@ -1,5 +1,6 @@
 import os
-from typing import List
+from typing import List, Union
+import json
 
 def get_files_in_directory(directory_path: str) -> List[str]:
     """
@@ -62,3 +63,30 @@ def count_paragraphs(input_string: str) -> int:
     
     # Filter out empty strings and return the count
     return len([p for p in paragraphs if p.strip()])
+
+import json
+from typing import Union
+
+def dict_check_and_convert(obj: Union[str, dict]) -> dict:
+    """
+    Ensures that the input object is a dictionary.
+    If the object is a JSON-formatted string, it parses it into a dictionary.
+    
+    Args:
+        obj (str | dict): Input that may be a dictionary or a JSON string.
+
+    Returns:
+        dict: A dictionary parsed from the input or the input itself if already a dict.
+              Returns an empty dictionary if parsing fails.
+    """
+    if isinstance(obj, str):
+        try:
+            return json.loads(obj)
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON: {e}")
+            return {}
+    elif isinstance(obj, dict):
+        return obj
+    else:
+        print(f"Unsupported input type: {type(obj)}. Expected str or dict.")
+        return {}

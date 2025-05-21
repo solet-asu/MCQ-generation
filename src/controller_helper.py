@@ -2,40 +2,39 @@ import json
 import logging
 from typing import Dict, Any, Tuple, List
 import re
-
+from src.general import dict_check_and_convert
 
 
 # Configure logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def validate_and_parse_plan(plan_json: str, user_request: Dict[str, int]) -> Tuple[str, List[str], List[str]]:
+def validate_and_parse_plan(plan: Dict[str, Any], fact: int, inference: int) -> Tuple[str, List[str], List[str]]:
     """
-    Validates the plan JSON against the user request and parses the summary, facts, and inferences.
+    Validates the plan against the user request and parses the summary, facts, and inferences.
 
     Args:
-        plan_json (str): The JSON string representing the plan.
-        user_request (Dict[str, int]): A dictionary containing the expected counts of facts and inferences.
+        plan (Dict[str, Any]): The dictionary object representing the plan.
+        fact: A integer suggesting the expected counts of facts as requested by the user.
+        inference: A integer suggesting the expected counts of inferences as requested by the user.
 
     Returns:
         Tuple[str, List[str], List[str]]: A tuple containing the summary, list of facts, and list of inferences.
 
-    Raises:
-        ValueError: If the JSON is invalid or validation fails.
     """
     try:
-        # Convert JSON string to Python dictionary
-        plan: Dict[str, Any] = json.loads(plan_json)
 
         # Extract facts and inferences from the plan
-        facts_dict = plan.get("selection", {}).get("facts", {})
-        inferences_dict = plan.get("selection", {}).get("inferences", {})
+        facts = plan.get("facts", {})
+        facts_dict = dict_check_and_convert(facts)
+        inferences = plan.get("inferences", {})
+        inferences_dict = dict_check_and_convert(inferences)
 
         # Count validation
         actual_facts_count = len(facts_dict)
         actual_inferences_count = len(inferences_dict)
-        expected_facts_count = user_request.get("facts", 0)
-        expected_inferences_count = user_request.get("inferences", 0)
+        expected_facts_count = fact
+        expected_inferences_count = inference
 
         errors = []
 
@@ -56,16 +55,12 @@ def validate_and_parse_plan(plan_json: str, user_request: Dict[str, int]) -> Tup
         if errors:
             raise ValueError("Validation failed. See logged errors.")
 
-        # Parse summary, facts, and inferences content
+        # Parse summary, facts, and inferences 
         summary = plan.get("summary", "")
-        facts = [fact["content"] for fact in facts_dict.values()]
-        inferences = [inf["content"] for inf in inferences_dict.values()]
+        facts = [fact for fact in facts_dict.values()]
+        inferences = [inf for inf in inferences_dict.values()]
 
         return summary, facts, inferences
-
-    except json.JSONDecodeError as e:
-        logger.error(f"Invalid JSON input: {e}")
-        raise ValueError("Invalid JSON input.") from e
 
     except ValueError as e:
         logger.error(f"Validation error: {e}")
@@ -77,7 +72,7 @@ def validate_and_parse_plan(plan_json: str, user_request: Dict[str, int]) -> Tup
     
     
 
-def extract_chunks(text: str, chunks: List[str]) -> List[str]:
+def extract_chunks(text: str, chunks: List[str]) -> str:
     """
     Extract content from text enclosed by specified chunk tags.
 
@@ -98,7 +93,37 @@ def extract_chunks(text: str, chunks: List[str]) -> List[str]:
         # Strip whitespace from matches and add to results
         extracted_contents.extend([match.strip() for match in matches])
 
+    #join the extracted contents into a single string, concatenating with a line break
+    extracted_contents = "\n".join(extracted_contents)
+
     return extracted_contents
+
+
+def extract_unlisted_chunks(summary: str, chunks: List[str]) -> str:
+    """
+    Extract text from all chunks in the summary that are NOT listed in `chunks`.
+
+    Args:
+        summary (str): The full summary with chunk tags.
+        chunks (List[str]): List of chunk labels to exclude (e.g., ["chunk2"]).
+
+    Returns:
+        str: Concatenated text from chunks not in the `chunks` list.
+    """
+    # Regex pattern to find all chunked segments in the format <chunkX>...</chunkX>
+    chunk_pattern = re.compile(r"<(chunk\d+)>(.*?)</\1>", re.DOTALL)
+    
+    # Find all chunks in the summary
+    all_chunks = chunk_pattern.findall(summary)
+
+    # Filter out chunks listed in the exclusion list
+    filtered_texts = [
+        text.strip() for label, text in all_chunks if label not in chunks
+    ]
+
+    # Join the filtered texts with a space
+    return " ".join(filtered_texts)
+
 
 
 def extract_summary(text: str) -> str:
@@ -114,6 +139,49 @@ def extract_summary(text: str) -> str:
     # Remove all tags like <chunkX> and </chunkX>
     cleaned_text = re.sub(r"</?chunk\d+>", "", text)
     return cleaned_text.strip()
+
+
+def create_task_list(plan: Dict[str, Any], fact: int, inference: int, main_idea: int) -> List[Dict[str, str]]:
+    """
+    Create a task list from the provided plan.
+
+    Args:
+        plan (Dict[str, Any]): The plan containing text summary, facts, and inferences.
+
+    Returns:
+        List[Dict[str, str]]: A list of dictionaries representing tasks.
+    """
+    task_list = []
+
+    summary, facts, inferences = validate_and_parse_plan(plan, fact, inference)
+    if facts:
+        for a_fact in facts:
+
+            fact_task ={
+                "question_type": "fact",
+                "content": a_fact.get("content", ""),
+                "text": extract_chunks(summary, a_fact.get("chunks", [])),
+                "context": extract_unlisted_chunks(summary, a_fact.get("chunks", [])),
+            }
+            task_list.append(fact_task)
+    
+    if inferences:
+        for a_inference in inferences:
+            inference_task = {
+                "question_type": "inference",
+                "content": a_inference.get("content", ""),
+                "text": extract_chunks(summary, a_inference.get("chunks", [])),
+                "context": extract_unlisted_chunks(summary, a_inference.get("chunks", [])),
+            }
+            task_list.append(inference_task)
+    
+    if main_idea:
+        main_idea_task = {
+            "question_type": "main_idea",
+            "text": extract_summary(summary)
+        }
+        task_list.append(main_idea_task)
+    return task_list
 
 
 

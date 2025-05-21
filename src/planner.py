@@ -70,8 +70,8 @@ def generate_plan(invocation_id: str,
         
         # extract summary, facts, and inferences from the generated text
         summary = generated_text_dict.get("summary", "")
-        facts = generated_text_dict.get("facts", {})
-        inferences = generated_text_dict.get("inferences", {})
+        facts = generated_text_dict.get("selection", {}).get("facts", {})
+        inferences = generated_text_dict.get("selection", {}).get("inferences", {})
         # add the summary, facts, and inferences to the plan metadata
         plan_metadata["summary"] = summary
         # Add the facts and inferences to the plan metadata as JSON strings
