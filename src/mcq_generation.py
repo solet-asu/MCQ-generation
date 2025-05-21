@@ -82,6 +82,9 @@ async def generate_mcq(invocation_id: str,
             mcq_metadata["mcq"] = await extract_mcq_with_agent(generated_text)
         insert_metadata(mcq_metadata, table_name, database_file)
 
+    if question_type != "main_idea":
+        mcq_metadata["chunk"] = task.get("chunk", [])
+        
     return mcq_metadata
 
 

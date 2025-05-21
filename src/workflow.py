@@ -55,7 +55,8 @@ async def question_generation_workflow(text:str, fact:int, inference:int, main_i
     # Step 4: generate questions
     questions_list = await generate_all_mcqs(task_list, invocation_id, model="gpt-4o", table_name="mcq_metadata", database_file="../database/mcq_metadata.db")
 
-
+    # Step 5: order and reformat the questions
+    # Step 6: store the data in a new table "mcq_formatted_metadata"  
 
     
 

@@ -141,7 +141,7 @@ def extract_summary(text: str) -> str:
     return cleaned_text.strip()
 
 
-def create_task_list(plan: Dict[str, Any], fact: int, inference: int, main_idea: int) -> List[Dict[str, str]]:
+def create_task_list(plan: Dict[str, Any], fact: int, inference: int, main_idea: int) -> List[Dict[str, str|list]]:
     """
     Create a task list from the provided plan.
 
@@ -162,6 +162,7 @@ def create_task_list(plan: Dict[str, Any], fact: int, inference: int, main_idea:
                 "content": a_fact.get("content", ""),
                 "text": extract_chunks(summary, a_fact.get("chunk", [])),
                 "context": extract_unlisted_chunks(summary, a_fact.get("chunk", [])),
+                "chunk": a_fact.get("chunk", [])
             }
             task_list.append(fact_task)
     
@@ -172,6 +173,7 @@ def create_task_list(plan: Dict[str, Any], fact: int, inference: int, main_idea:
                 "content": a_inference.get("content", ""),
                 "text": extract_chunks(summary, a_inference.get("chunk", [])),
                 "context": extract_unlisted_chunks(summary, a_inference.get("chunk", [])),
+                "chunk": a_inference.get("chunk", [])
             }
             task_list.append(inference_task)
     
