@@ -6,6 +6,7 @@ from src.agent import Agent
 from src.general import *
 from src.database_handler import *
 import asyncio
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -40,6 +41,7 @@ async def generate_mcq(invocation_id: str,
     create_table(table_name, database_file)
 
     question_type = task.get("question_type", "").lower()
+    chunk = json.dumps(task.get("chunk", []))
     prompt_file = QUESTION_TYPE_PROMPT_MAP.get(question_type)
     if prompt_file is None:
         raise ValueError(f"Invalid question type: {question_type}.")
@@ -63,7 +65,8 @@ async def generate_mcq(invocation_id: str,
     mcq_metadata = question_generation_agent.get_metadata()
     mcq_metadata.update({
         "question_type": question_type,
-        "invocation_id": invocation_id
+        "invocation_id": invocation_id,
+        "chunk": chunk
     })
 
     if generated_text:
@@ -80,10 +83,8 @@ async def generate_mcq(invocation_id: str,
                 mcq_metadata["mcq_answer"] = await extract_answer_with_agent(generated_text)
         else:
             mcq_metadata["mcq"] = await extract_mcq_with_agent(generated_text)
+        
         insert_metadata(mcq_metadata, table_name, database_file)
-
-    if question_type != "main_idea":
-        mcq_metadata["chunk"] = task.get("chunk", [])
         
     return mcq_metadata
 

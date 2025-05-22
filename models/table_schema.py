@@ -9,14 +9,14 @@ TABLE_SCHEMAS: Dict[str, Dict[str, str]] = {
         "model": "TEXT",
         "completion": "TEXT",
         "summary": "TEXT",
-        "facts": "JSON",
-        "inferences": "JSON",
+        "facts": "TEXT",
+        "inferences": "TEXT",
         "execution_time": "TEXT",
         "input_tokens": "INTEGER",
         "output_tokens": "INTEGER",
         "timestamp": "TEXT"
     },
-    "mcq_metadata": {
+        "mcq_metadata": {
         "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
         "invocation_id": "TEXT",
         "question_type": "TEXT",
@@ -26,10 +26,19 @@ TABLE_SCHEMAS: Dict[str, Dict[str, str]] = {
         "completion": "TEXT",
         "mcq": "TEXT",
         "mcq_answer": "TEXT",
+        "chunk": "TEXT",
         "execution_time": "TEXT",
         "input_tokens": "INTEGER",
         "output_tokens": "INTEGER",
         "timestamp": "TEXT"
     },
+        "workflow_metadata": {
+        "invocation_id": "TEXT",
+        "output": "TEXT",
+        "execution_time": "TEXT",
+        "input_tokens": "INTEGER",
+        "output_tokens": "INTEGER",
+        "timestamp": "TEXT"
+    }
 
 }
