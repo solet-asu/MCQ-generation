@@ -10,9 +10,12 @@ from models.req_models import MCQRequest  # Import the MCQRequest model from mod
 import logging
 
 # Import the generate_mcq function
-from src.mcq_generation import generate_mcq  
+from src.workflow import question_generation_workflow  
 
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
 
 # Initialize the FastAPI app
 app = FastAPI()
@@ -38,31 +41,32 @@ async def read_root():
 
 
 # Define the endpoint to generate MCQs
-@app.post("/generate_mcq", response_model=Dict[str,str])
+@app.post("/generate_mcq", response_model=List[Dict[str, str]])
 async def generate_mcq_endpoint(request: MCQRequest) -> JSONResponse:
     """
-    Endpoint to generate multiple-choice questions (MCQs).
+    Endpoint to generate multiple MCQs of various types.
 
     Args:
-        request (MCQRequest): The request containing text, question type, and number of questions.
+        request (MCQRequest): The request object containing text, fact, inference, and main_idea.
 
     Returns:
-        JSONResponse: A JSON response containing the generated MCQ and its answer.
+        JSONResponse: A JSON response containing the generated MCQs.
     """
-
     try:
-        # Call the generate_mcq function
-        question_meta = generate_mcq(request.text, request.fact, request.inference, request.main_idea)
-        mcq = question_meta.get("mcq", "Sorry, I couldn't generate the MCQ.")
-        mcq_answer = question_meta.get("mcq_answer", "Sorry, the answer is not available.")
-        response = {
-            "mcq": mcq,
-            "mcq_answer": mcq_answer
-        }
-        return JSONResponse(content=response)
+        # Call the question generation workflow with the provided request data
+        results = await question_generation_workflow(
+            text=request.text,
+            fact=request.fact,
+            inference=request.inference,
+            main_idea=request.main_idea,
+            model="gpt-4o"
+        )
+        return JSONResponse(content=results)
     except ValueError as e:
+        # Log and handle ValueError specifically
         logger.error(f"ValueError: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        # Log unexpected errors and return a generic server error response
         logger.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
