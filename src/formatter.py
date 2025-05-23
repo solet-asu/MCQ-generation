@@ -1,10 +1,67 @@
 from typing import List, Dict, Union
 import ast
 import re
+import random
 import logging
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
+
+def shuffle_mcq(mcq_dict: Dict[str, str]) -> None:
+    """
+    Shuffles the options of a multiple-choice question and updates the correct answer accordingly.
+
+    Args:
+        mcq_dict (dict): A dictionary containing 'mcq' and 'mcq_answer' fields.
+                         'mcq' is a string with the question and options separated by "\n  \n".
+                         'mcq_answer' is a string indicating the correct option (e.g., "A) Option text").
+    
+    Raises:
+        ValueError: If the correct answer text does not match any option in the question.
+    """
+    # Get the mcq string and split into question and options
+    mcq_str = mcq_dict['mcq']
+    parts = mcq_str.split("\n  \n")
+    question = parts[0]
+    options = parts[1:]
+    
+    # Extract the text of each option, removing the letter prefix (e.g., "A) ")
+    option_texts = [opt.split(") ", 1)[1] for opt in options]
+    
+    # Extract the correct answer text from mcq_answer
+    mcq_answer = mcq_dict['mcq_answer']
+    correct_letter, correct_text = mcq_answer.split(") ", 1)
+    
+    # Verify that the correct answer text matches one of the options
+    if correct_text not in option_texts:
+        logging.error("Correct answer text does not match any option in the question")
+        raise ValueError("Correct answer text does not match any option in the question")
+    
+    # Create a copy of option texts and shuffle them
+    shuffled_texts = option_texts.copy()
+    random.shuffle(shuffled_texts)
+    
+    # Find the new position of the correct answer in the shuffled list
+    new_index = shuffled_texts.index(correct_text)
+    
+    # Assign new letters (A, B, C, D) based on the shuffled order
+    letters = ['A', 'B', 'C', 'D']
+    new_letter = letters[new_index]
+    
+    # Reconstruct the mcq string with the shuffled options
+    new_options = [f"{letters[i]}) {shuffled_texts[i]}" for i in range(len(shuffled_texts))]
+    new_mcq = question + "\n  \n" + "\n  \n".join(new_options)
+    
+    # Update mcq_answer with the new letter
+    new_mcq_answer = f"{new_letter}) {correct_text}"
+    
+    # Update the dictionary in place
+    mcq_dict['mcq'] = new_mcq
+    mcq_dict['mcq_answer'] = new_mcq_answer
+
+    logging.info("MCQ options shuffled successfully.")
+
 
 def extract_chunk_number(chunk_str: str) -> Union[int, float]:
     """Extracts the last chunk number from a stringified list.
@@ -71,6 +128,10 @@ def reformat_mcq_metadata(mcq_metadata: List[Dict]) -> List[Dict]:
     Returns:
         List[Dict]: Fully processed list of metadata dictionaries.
     """
+    # Shuffle the options in each MCQ
+    for d in mcq_metadata:
+        shuffle_mcq(d)
+        
     reordered = reorder_mcq_metadata(mcq_metadata)
     marked = add_question_markers(reordered)
     return marked

@@ -26,8 +26,7 @@ system_prompt: |
     - Sound reasonable to a student who only skimmed or misunderstood the text.
     - Reflect minor details from the text.
     - Be similar in length and complexity to the correct answer.
-  Step5: Shuffle the answer and distractors to create a list of four options (A, B, C, D).
-  Step6: Self-critique the question and answer choices to ensure clarity, accuracy, and relevance. 
+  Step5: Self-critique the question and answer choices to ensure clarity, accuracy, and relevance. 
     - Ensure that the question is clear and unambiguous.
     - Ensure that the correct answer is clearly the best choice.
     - Ensure that the distractors are plausible and relevant.
