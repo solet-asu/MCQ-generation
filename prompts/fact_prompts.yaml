@@ -35,7 +35,7 @@ system_prompt: |
     - Ensure that the question is clear and unambiguous.
     - Ensure that the correct answer is clearly the best choice.
     - Ensure that the distractors are plausible and relevant.
-    - Ensure that the answer choices are not too similar or too different in length or complexity.
+    - Ensure that the answer choices are similar in length and complexity.
   
   Print out your reasoning BEFORE you print out the mutliple-choice factual question. 
 
