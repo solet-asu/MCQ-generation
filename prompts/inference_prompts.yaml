@@ -28,13 +28,13 @@ system_prompt: |
     - Try not to use words that are in the question.
     - Avoid using determinative words such as always, never, absolutely.
     - Avoid wording that could make multiple answers seem correct.
-  Step4: Provide three plausible distractors based on the text. The distractors should:
+  Step3: Provide three plausible distractors based on the text. The distractors should:
     - Be plausible but incorrect based on the text.
     - Avoid obviously wrong or ridiculous choices.
     - Use common misconceptions or similar-sounding terms.
     - Be approximately the same number of words as the answer. 
     - Be independent of the answer.
-  Step5: Self-critique the question and answer choices to ensure clarity, accuracy, and relevance. 
+  Step4: Self-critique the question and answer choices to ensure clarity, accuracy, and relevance. 
     - Ensure that the question is clear and unambiguous.
     - Ensure that the correct answer is clearly the best choice.
     - Ensure that the distractors are plausible and relevant.
