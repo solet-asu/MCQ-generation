@@ -14,53 +14,60 @@ def shuffle_mcq(mcq_dict: Dict[str, str]) -> None:
 
     Args:
         mcq_dict (dict): A dictionary containing 'mcq' and 'mcq_answer' fields.
-                         'mcq' is a string with the question and options separated by "\n  \n".
+                         'mcq' is a string with the question and options.
                          'mcq_answer' is a string indicating the correct option (e.g., "A) Option text").
     
     Raises:
         ValueError: If the correct answer text does not match any option in the question.
     """
-    # Get the mcq string and split into question and options
     mcq_str = mcq_dict['mcq']
-    parts = mcq_str.split("\n  \n")
-    question = parts[0]
-    options = parts[1:]
-    
-    # Extract the text of each option, removing the letter prefix (e.g., "A) ")
+
+    # Find the index where the first option (A)-D)) appears
+    match = re.search(r'(?m)^([A-D]\))', mcq_str)
+    if not match:
+        logging.error("No valid option labels (A)-D)) found in MCQ string")
+        raise ValueError("No valid option labels (A)-D)) found in MCQ string")
+
+    start_index = match.start()
+    question = mcq_str[:start_index].strip()
+    options_str = mcq_str[start_index:]
+
+    # Extract options as ["A) Option text", "B) Option text", ...]
+    options = re.findall(r'([A-D]\)\s.*?)(?=\n[A-D]\)|\Z)', options_str, flags=re.DOTALL)
+    options = [opt.strip() for opt in options]
+
+    # Extract option texts without labels
     option_texts = [opt.split(") ", 1)[1] for opt in options]
-    
-    # Extract the correct answer text from mcq_answer
+
+    # Extract correct answer text
     mcq_answer = mcq_dict['mcq_answer']
-    correct_letter, correct_text = mcq_answer.split(") ", 1)
-    
-    # Verify that the correct answer text matches one of the options
+    try:
+        correct_letter, correct_text = mcq_answer.split(") ", 1)
+    except ValueError:
+        logging.error("Invalid format for 'mcq_answer'. Expected format 'A) Option text'")
+        raise ValueError("Invalid format for 'mcq_answer'. Expected format 'A) Option text'")
+
     if correct_text not in option_texts:
         logging.error("Correct answer text does not match any option in the question")
         raise ValueError("Correct answer text does not match any option in the question")
-    
-    # Create a copy of option texts and shuffle them
+
+    # Shuffle and reassign letters
     shuffled_texts = option_texts.copy()
     random.shuffle(shuffled_texts)
-    
-    # Find the new position of the correct answer in the shuffled list
     new_index = shuffled_texts.index(correct_text)
-    
-    # Assign new letters (A, B, C, D) based on the shuffled order
     letters = ['A', 'B', 'C', 'D']
     new_letter = letters[new_index]
-    
-    # Reconstruct the mcq string with the shuffled options
+
+    # Rebuild the MCQ string
     new_options = [f"{letters[i]}) {shuffled_texts[i]}" for i in range(len(shuffled_texts))]
-    new_mcq = question + "\n  \n" + "\n  \n".join(new_options)
-    
-    # Update mcq_answer with the new letter
-    new_mcq_answer = f"{new_letter}) {correct_text}"
-    
-    # Update the dictionary in place
+    new_mcq = question + "\n\n" + "\n\n".join(new_options)
+
+    # Update dictionary
     mcq_dict['mcq'] = new_mcq
-    mcq_dict['mcq_answer'] = new_mcq_answer
+    mcq_dict['mcq_answer'] = f"{new_letter}) {correct_text}"
 
     logging.info("MCQ options shuffled successfully.")
+
 
 
 def extract_chunk_number(chunk_str: str) -> Union[int, float]:
