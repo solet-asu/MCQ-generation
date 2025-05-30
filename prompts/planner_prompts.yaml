@@ -12,6 +12,7 @@ system_prompt: |
     Step2: Identify key facts and/or inferences
     Depending on the user’s requests, create a list of key facts and/or inferences from the academic text. The number of facts or inferences can be more than what the user requests. 
     Skip this step if the user requests none of them. 
+    Pay special attention to Learning/Teaching Objectives if they are provided in the text, as they often highlight the most important concepts or skills that the text aims to convey. 
 
     Read the definitions below to better understand what key facts and inferences are:
     
