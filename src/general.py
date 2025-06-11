@@ -2,6 +2,7 @@ import os
 from typing import List, Union, Dict
 import json
 import logging
+import csv
 
 
 # Configure logging
@@ -35,6 +36,31 @@ def read_text_file(file_path: str) -> str:
         return "Error: File not found."
     except Exception as e:
         return f"Error: {e}"
+    
+    
+def read_csv_file(file_path: str) -> List[Dict[str, str]]:
+    """
+    Reads a CSV file and returns its content as a list of dictionaries.
+    
+    Each dictionary represents a row in the CSV, with keys as column headers.
+    
+    Args:
+        file_path (str): The path to the CSV file.
+        
+    Returns:
+        List[Dict[str, str]]: A list of dictionaries representing the CSV rows.
+    """
+    
+    try:
+        with open(file_path, mode='r', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            return [row for row in reader]
+    except FileNotFoundError:
+        logging.error(f"File not found: {file_path}")
+        return []
+    except Exception as e:
+        logging.error(f"Error reading CSV file: {e}")
+        return []
     
 
 def count_words(input_string: str) -> int:

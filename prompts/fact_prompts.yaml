@@ -15,27 +15,42 @@ system_prompt: |
   [GUIDELINES]
   Generate a multiple-choice factual question by completing the following steps in order:
 
-  Step1: Based on the fact, source text, and contextual text, write a question that directly asks about the fact, avoiding unnecessary complexity. Keep the wording concise and straightforward to focus on the content.
-    - Example (Good Question):
+  Step1: Based on the fact, source text, and contextual text, write a question that directly asks about the fact, avoiding unnecessary complexity. 
+    - Keep the wording concise and straightforward to focus on the content.
+      Example (Good Question):
       "What is the primary function of the amygdala?"
-    - Example (Poor Question - Too Vague):
+      Example (Poor Question - Too Vague):
       "What does the amygdala do?" (Too broad, unclear if asking about function, structure, or location.)
+    - Avoid unnecessary introductory phrases such as "According to the text," "Based on the source," or "According to the passage"
   Step2: Provide a correct answer to the question based on the facts in the text. The correct answer should:
     - Be indisputably correct based on the text.
     - Try not to use words that are in the question.
-    - Avoid using determinative words such as always, never, absolutely.
     - Avoid wording that could make multiple answers seem correct.
-  Step4: Provide three distractors based on the text. The distractors should:
-    - Be plausible but incorrect based on the text.
+  Step3: Provide three plausible distractors based on the text. The distractors should:
     - Avoid obviously wrong or ridiculous choices.
-    - Use common misconceptions or similar-sounding terms.
-    - Be approximately the same number of words as the answer. 
-    - Be independent of the answer.
-  Step5: Self-critique the question and answer choices to ensure clarity, accuracy, and relevance. 
+    - Be plausible and logically parallel but incorrect based on the text. 
+    - Be similar in length, structure, tone, and complexity to the correct answer. 
+    - Independent of each other and NOT variants of the correct answer.
+    - Avoid deterministic words (e.g., solely, completely, always, never, purely, every, only) unless they accurately reflect real-world absolutes
+        Many test-takers are trained to spot absolute terms in options as red flags. Using these words in distractors can weaken the item’s ability to discriminate between high- and low-performing students unless they represent a plausible yet incorrect overstatement. Do not use them simply to make distractors sound wrong or extreme.
+        Example: 
+        Why is peer review important in academic research?
+        A). It ensures that every mistake is caught before publication. (Unrealistic exaggeration.)
+        B). It contributes to the credibility and validity of research. (correct answer)
+        C). It completely eliminates the risk of bias. (Overly absolute, sounds implausible.)
+        D). It allows only the best scientists to publish. (Overgeneralized and elitist; not a common misconception.)
+        The distractors are poor because they do not mirror student thinking—they simply sound extreme or silly, weakening the item's quality.
+    **Example with good distractors**
+      which of the following best illustrates the role of peer groups in the socialization process?
+        A). Teaching a child the formal rules of grammar and writing. (distractor)
+        B). Reinforcing cultural norms through interaction with age-mates. (correct answer)
+        C). Broadcasting societal ideals through scripted television shows. (distractor)
+        D). Imposing institutional discipline through structured authority. (distractor)
+  Step4: Self-critique the question and answer choices to ensure clarity, accuracy, and relevance. 
     - Ensure that the question is clear and unambiguous.
     - Ensure that the correct answer is clearly the best choice.
     - Ensure that the distractors are plausible and relevant.
-    - Ensure that the answer choices are similar in length and complexity.
+    - Ensure that the answer choices are similar in length, structure, tone, and complexity.
   
   Print out your reasoning BEFORE you print out the mutliple-choice factual question. 
 
