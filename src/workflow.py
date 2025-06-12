@@ -76,7 +76,8 @@ async def question_generation_workflow(text:str,
                     invocation_id, 
                     model=model, 
                     table_name="mcq_metadata", 
-                    database_file="../database/mcq_metadata.db")
+                    database_file="../database/mcq_metadata.db",
+                    max_attempt=3)
     logging.info(f"Questions generated successfully.")
     
 

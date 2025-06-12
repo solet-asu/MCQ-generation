@@ -5,6 +5,7 @@ from src.prompt_fetch import get_prompts
 from src.agent import Agent
 from src.general import *
 from src.database_handler import *
+from src.evaluator import generate_evaluation
 import asyncio
 import json
 
@@ -32,10 +33,12 @@ def extract_output(input_str: str, item: str = "QUESTION") -> Optional[str]:
 
 
 async def generate_mcq(invocation_id: str, 
-                       model: str, 
-                       task: Dict, 
-                       table_name: str = "mcq_metadata", 
-                       database_file: str = '../database/mcq_metadata.db') -> Dict:
+                      model: str, 
+                      task: Dict, 
+                      table_name: str = "mcq_metadata", 
+                      database_file: str = '../database/mcq_metadata.db',
+                      max_attempt: int = 3,
+                      attempt: int = 1) -> Dict:
     """Generate a multiple-choice question (MCQ) and store metadata."""
     
     create_table(table_name, database_file)
@@ -55,6 +58,13 @@ async def generate_mcq(invocation_id: str,
         context=task.get("context", "")
     )
 
+    # Add revision information if this isn't the first attempt
+    if attempt > 1:
+        previous_mcq = task.get("previous_mcq", "No previous MCQ")
+        previous_answer = task.get("previous_answer", "No previous answer")
+        evaluation_reasoning = task.get("evaluation_reasoning", "No reasoning")
+        user_prompt += f"\n\nRevise your generated multiple-choice question.\n\nPrevious MCQ:\n{previous_mcq}\n\nPrevious Answer:\n{previous_answer}\n\nEvaluation Reasoning:\n{evaluation_reasoning}"
+
     question_generation_agent = Agent(
         model=model,
         system_prompt=system_prompt,
@@ -66,7 +76,8 @@ async def generate_mcq(invocation_id: str,
     mcq_metadata.update({
         "question_type": question_type,
         "invocation_id": invocation_id,
-        "chunk": chunk
+        "chunk": chunk,
+        "attempt": attempt
     })
 
     if generated_text:
@@ -82,8 +93,47 @@ async def generate_mcq(invocation_id: str,
                 logger.warning("Falling back to answer agent.")
                 mcq_metadata["mcq_answer"] = await extract_answer_with_agent(generated_text)
         else:
+            logger.warning("Falling back to MCQ agent.")
             mcq_metadata["mcq"] = await extract_mcq_with_agent(generated_text)
-        
+    
+        # Evaluate the generated question
+        evaluation_meta = generate_evaluation(
+            invocation_id=invocation_id,
+            model=model,
+            mcq_metadata=mcq_metadata,
+            task=task,
+            table_name="evaluation_metadata",
+            database_file=database_file
+        )
+        if evaluation_meta:
+            logger.info("Evaluation metadata generated successfully.")
+            evaluation_meta_dict = extract_json_string(evaluation_meta)
+            if evaluation_meta_dict["evaluation"] == "YES":
+                logger.info("Evaluation passed successfully.")
+            elif evaluation_meta_dict["evaluation"] == "REVISED":
+                logger.info("Evaluation revised successfully.")
+                mcq_metadata["mcq"] = evaluation_meta_dict.get("revised_mcq", mcq_metadata["mcq"])
+            elif evaluation_meta_dict["evaluation"] == "NO":
+                logger.info(f"Evaluation failed on attempt {attempt}/{max_attempt}")
+                if attempt < max_attempt:
+                    # Prepare for next attempt
+                    task["previous_mcq"] = mcq_metadata.get("mcq", "No MCQ")
+                    task["previous_answer"] = mcq_metadata.get("mcq_answer", "No answer")
+                    task["evaluation_reasoning"] = evaluation_meta.get("reasoning", "No reasoning")
+                    return await generate_mcq(
+                        invocation_id=invocation_id,
+                        model=model,
+                        task=task,
+                        table_name=table_name,
+                        database_file=database_file,
+                        max_attempt=max_attempt,
+                        attempt=attempt + 1
+                    )
+                else:
+                    logger.warning("Max attempts reached. Setting default failure values.")
+                    mcq_metadata["mcq"] = "No MCQ generated due to evaluation failure."
+                    mcq_metadata["mcq_answer"] = "No answer generated due to evaluation failure."
+
         insert_metadata(mcq_metadata, table_name, database_file)
         
     return mcq_metadata
@@ -113,18 +163,20 @@ async def extract_mcq_with_agent(generated_text: str) -> str:
     return result or "Sorry, We couldn't generate a multiple-choice question for you."
 
 
-async def generate_all_mcqs(task_list, 
-                            invocation_id, 
-                            model="gpt-4o", 
-                            table_name="mcq_metadata", 
-                            database_file="../database/mcq_metadata.db"):
+async def generate_all_mcqs(task_list: list, 
+                            invocation_id: str, 
+                            model: str, 
+                            table_name: str="mcq_metadata", 
+                            database_file: str ="../database/mcq_metadata.db",
+                            max_attempt: int=3):
     tasks = [
         generate_mcq(
             invocation_id=invocation_id,
             model=model,
             task=task,
             table_name=table_name,
-            database_file=database_file
+            database_file=database_file,
+            max_attempt=max_attempt,
         )
         for task in task_list
     ]
