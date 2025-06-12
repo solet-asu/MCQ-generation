@@ -32,6 +32,26 @@ TABLE_SCHEMAS: Dict[str, Dict[str, str]] = {
         "output_tokens": "INTEGER",
         "timestamp": "TEXT"
     },
+
+        "evaluation_metadata": {
+        "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "invocation_id": "TEXT",
+        "question_type": "TEXT",
+        "mcq": "TEXT",
+        "mcq_answer": "TEXT",
+        "source": "TEXT",
+        "system_prompt": "TEXT",
+        "user_prompt": "TEXT",
+        "model": "TEXT",
+        "completion": "TEXT",
+        "evaluation": "TEXT",
+        "revised_mcq": "TEXT",
+        "reasoning": "TEXT",
+        "execution_time": "TEXT",
+        "input_tokens": "INTEGER",
+        "output_tokens": "INTEGER",
+        "timestamp": "TEXT"
+    },
         "workflow_metadata": {
         "invocation_id": "TEXT",
         "output": "TEXT",

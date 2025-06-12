@@ -66,7 +66,7 @@ async def generate_plan(invocation_id: str,
         # Insert the metadata into the database
         insert_metadata(plan_metadata, table_name, database_file) 
     else:
-        logger.warning("Failed to extract MCQ using the mcq_extractor_agent. Return a sorry message")
+        logger.warning("Failed to generate a plan.")
 
         # extract summary, facts, and inferences from the generated text
         summary = ""
@@ -77,6 +77,9 @@ async def generate_plan(invocation_id: str,
         # Add the facts and inferences to the plan metadata as JSON strings
         plan_metadata["facts"] = json.dumps(facts)  
         plan_metadata["inferences"] = json.dumps(inferences) 
+
+        # Insert the metadata into the database
+        insert_metadata(plan_metadata, table_name, database_file) 
 
     return plan_metadata
 
