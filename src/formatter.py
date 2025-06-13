@@ -41,11 +41,12 @@ def shuffle_mcq(mcq_dict: Dict[str, str]) -> None:
 
     # Extract correct answer text
     mcq_answer = mcq_dict['mcq_answer']
-    try:
-        correct_letter, correct_text = mcq_answer.split(") ", 1)
-    except ValueError:
-        logging.error("Invalid format for 'mcq_answer'. Expected format 'A) Option text'")
-        raise ValueError("Invalid format for 'mcq_answer'. Expected format 'A) Option text'")
+    match = re.match(r'^([A-D])\)\s*(.+)', mcq_answer)
+    if not match:
+        logging.error("Invalid format for 'mcq_answer'. Expected format like 'A) Option text'")
+        raise ValueError("Invalid format for 'mcq_answer'. Expected format like 'A) Option text'")
+
+    correct_letter, correct_text = match.groups()
 
     if correct_text not in option_texts:
         logging.error("Correct answer text does not match any option in the question")

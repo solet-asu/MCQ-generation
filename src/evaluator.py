@@ -12,7 +12,7 @@ import json
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-def generate_evalution(invocation_id: str, 
+async def generate_evaluation(invocation_id: str, 
                        model: str, 
                        mcq_metadata: Dict, # extract the mcq and answer from the metadata
                        task: Dict, # get the source text and context
@@ -22,7 +22,7 @@ def generate_evalution(invocation_id: str,
     
     create_table(table_name, database_file)
 
-    prompt_file = "evaluation_prompts.yaml"
+    prompt_file = "evaluator_prompts.yaml"
     prompts = get_prompts(prompt_file)
 
     system_prompt = prompts.get("system_prompt", "")
@@ -39,7 +39,7 @@ def generate_evalution(invocation_id: str,
         user_prompt=user_prompt
     )
     
-    generated_text = evaluation_generation_agent.completion_generation()
+    generated_text = await evaluation_generation_agent.completion_generation()
     evaluation_metadata = evaluation_generation_agent.get_metadata()
     evaluation_metadata.update({
         "invocation_id": invocation_id,
@@ -56,12 +56,13 @@ def generate_evalution(invocation_id: str,
         # extract evaluation, revised_mcq, and reasoning from the generated text
         evaluation = generated_text_dict.get("evaluation", "")
         revised_mcq = generated_text_dict.get("revised_mcq", "")
+        revised_answer = generated_text_dict.get("revised_answer", "")
         reasoning = generated_text_dict.get("reasoning", "")
         # add the evaluation, revised_mcq, and reasoning to the evaluation metadata
         evaluation_metadata["evaluation"] = evaluation
-        evaluation_metadata["revised_mcq"] = revised_mcq   
+        evaluation_metadata["revised_mcq"] = revised_mcq 
+        evaluation_metadata["revised_answer"] = revised_answer  
         evaluation_metadata["reasoning"] = reasoning 
-
 
         # Insert the metadata into the database
         insert_metadata(evaluation_metadata, table_name, database_file) 
@@ -71,11 +72,13 @@ def generate_evalution(invocation_id: str,
         # set evaluation, revised_mcq, and reasoning as empty strings
         evaluation = ""
         revised_mcq = ""
+        revised_answer = ""
         reasoning = ""
 
         # add the evaluation, revised_mcq, and reasoning to the evaluation metadata
         evaluation_metadata["evaluation"] = evaluation
         evaluation_metadata["revised_mcq"] = revised_mcq
+        evaluation_metadata["revised_answer"] = revised_answer
         evaluation_metadata["reasoning"] = reasoning
         
         # Insert the metadata into the database

@@ -97,7 +97,7 @@ async def generate_mcq(invocation_id: str,
             mcq_metadata["mcq"] = await extract_mcq_with_agent(generated_text)
     
         # Evaluate the generated question
-        evaluation_meta = generate_evaluation(
+        evaluation_meta = await generate_evaluation(
             invocation_id=invocation_id,
             model=model,
             mcq_metadata=mcq_metadata,
@@ -107,32 +107,48 @@ async def generate_mcq(invocation_id: str,
         )
         if evaluation_meta:
             logger.info("Evaluation metadata generated successfully.")
-            evaluation_meta_dict = extract_json_string(evaluation_meta)
-            if evaluation_meta_dict["evaluation"] == "YES":
-                logger.info("Evaluation passed successfully.")
-            elif evaluation_meta_dict["evaluation"] == "REVISED":
-                logger.info("Evaluation revised successfully.")
-                mcq_metadata["mcq"] = evaluation_meta_dict.get("revised_mcq", mcq_metadata["mcq"])
-            elif evaluation_meta_dict["evaluation"] == "NO":
-                logger.info(f"Evaluation failed on attempt {attempt}/{max_attempt}")
-                if attempt < max_attempt:
-                    # Prepare for next attempt
-                    task["previous_mcq"] = mcq_metadata.get("mcq", "No MCQ")
-                    task["previous_answer"] = mcq_metadata.get("mcq_answer", "No answer")
-                    task["evaluation_reasoning"] = evaluation_meta.get("reasoning", "No reasoning")
-                    return await generate_mcq(
-                        invocation_id=invocation_id,
-                        model=model,
-                        task=task,
-                        table_name=table_name,
-                        database_file=database_file,
-                        max_attempt=max_attempt,
-                        attempt=attempt + 1
-                    )
-                else:
-                    logger.warning("Max attempts reached. Setting default failure values.")
-                    mcq_metadata["mcq"] = "No MCQ generated due to evaluation failure."
-                    mcq_metadata["mcq_answer"] = "No answer generated due to evaluation failure."
+            if isinstance(evaluation_meta, dict):
+                evaluation_meta_dict = evaluation_meta
+            elif isinstance(evaluation_meta, str):
+                try:
+                    evaluation_meta_dict = extract_json_string(evaluation_meta)
+                except ValueError as e:
+                    logger.error(f"Failed to parse evaluation_meta as JSON: {e}")
+                    evaluation_meta_dict = {}  # Fallback to empty dict or handle differently
+            else:
+                logger.error(f"Unexpected type for evaluation_meta: {type(evaluation_meta)}")
+                evaluation_meta_dict = {}  # Fallback to empty dict or raise an error
+            if evaluation_meta_dict:
+                if evaluation_meta_dict["evaluation"] == "YES":
+                    logger.info("Evaluation passed successfully.")
+                elif evaluation_meta_dict["evaluation"] == "REVISED":
+                    logger.info("Evaluation revised successfully.")
+                    revised_mcq = evaluation_meta_dict.get("revised_mcq", "")
+                    revised_answer = evaluation_meta_dict.get("revised_answer", "")
+                    if revised_mcq:
+                        mcq_metadata["mcq"] = revised_mcq
+                    if revised_answer:
+                        mcq_metadata["mcq_answer"] = revised_answer
+                elif evaluation_meta_dict["evaluation"] == "NO":
+                    logger.info(f"Evaluation failed on attempt {attempt}/{max_attempt}")
+                    if attempt < max_attempt:
+                        # Prepare for next attempt
+                        task["previous_mcq"] = mcq_metadata.get("mcq", "No MCQ")
+                        task["previous_answer"] = mcq_metadata.get("mcq_answer", "No answer")
+                        task["evaluation_reasoning"] = evaluation_meta.get("reasoning", "No reasoning")
+                        return await generate_mcq(
+                            invocation_id=invocation_id,
+                            model=model,
+                            task=task,
+                            table_name=table_name,
+                            database_file=database_file,
+                            max_attempt=max_attempt,
+                            attempt=attempt + 1
+                        )
+                    else:
+                        logger.warning("Max attempts reached. Setting default failure values.")
+                        mcq_metadata["mcq"] = "No MCQ generated due to evaluation failure."
+                        mcq_metadata["mcq_answer"] = "No answer generated due to evaluation failure."
 
         insert_metadata(mcq_metadata, table_name, database_file)
         
