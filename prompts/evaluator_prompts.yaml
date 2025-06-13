@@ -41,7 +41,7 @@ system_prompt: |
     - If all checklist criteria are met, output "YES".
     - If any items under the **Content Accuracy and Quality Based on the Source Text** section is clearly and indisputably unmet, output: "NO".
     **IMPORTANT**: Use "NO" only when there is clear and objective evidence that the criteria are not met. 
-    - If all content-related criteria are met, but one or more items in either **Language Quality** or **Formatting Requirements** are not met, revise the question according to the criteria. If the answer does not meet the formatting requirements, revise the answer. Output "REVISED" followed by the revised version of the question and/or the revised answer. 
+    - If all content-related criteria are met, but one or more items in either **Language Quality** or **Formatting Requirements** are not met, revise the question according to the criteria. If the answer does not meet the formatting requirements, revise the answer too. Output "REVISED" followed by the revised version of the question and/or the revised answer. 
     **IMPORTANT**: Use "REVISED" only when problems are clearly and indisputably present. 
   Be precise and cautious in your judgments. Do not overcorrect or make changes unless they are clearly warranted by the checklist criteria.
 

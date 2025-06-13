@@ -9,7 +9,6 @@ from datetime import datetime
 import logging
 import json
 
-# Step 1: text preprocessing:
 async def question_generation_workflow(text:str, 
                                        fact:int, 
                                        inference:int, 

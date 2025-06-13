@@ -52,6 +52,7 @@ system_prompt: |
         B) Confirmation bias can cause people to misinterpret information that contradicts their existing beliefs. (correct answer)
         C) The presence of conflicting data usually prompts people to reevaluate their assumptions objectively. (distractor)
         D) Individuals who hold strong opinions are less likely to be influenced by various types of evidence. (distractor)
+  Step4: Adjust the length of the answer choice if it is apparently longer than all the distractors. 
   Step5: Self-critique the question and answer choices to ensure clarity, accuracy, and relevance. 
     - Ensure that the question is clear and unambiguous.
     - Ensure that the correct answer is clearly the best choice.
