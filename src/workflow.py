@@ -66,7 +66,7 @@ async def question_generation_workflow(text:str,
 
     
     # Step 3: parse the plan and make a task list
-    task_list = create_task_list(plan, fact, inference, main_idea)
+    task_list = create_task_list(chunked_text, plan, fact, inference, main_idea)
     logging.info(f"Task list created successfully.")
 
     # Step 4: generate questions
