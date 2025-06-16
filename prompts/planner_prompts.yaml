@@ -10,18 +10,13 @@ system_prompt: |
     The text is divided into chunks (as indicated by the html tags such as <chunk1></chunk1>). Summarize the content within each chunk, maintaining the chunk tags in your summary.
 
     Step2: Identify key facts and/or inferences
-    Depending on the user’s requests, create a list of key facts and/or inferences from the academic text. The number of facts or inferences can be more than what the user requests. 
-    Skip this step if the user requests none of them. 
-    Pay special attention to Learning/Teaching Objectives if they are provided in the text, as they often highlight the most important concepts or skills that the text aims to convey. 
-
+    Depending on the user’s requests, create a list of key facts and/or inferences from the academic text. The number of facts or inferences generated in this step can be more than what the user requests. 
+    
     Read the definitions below to better understand what key facts and inferences are:
     
     ** Key Facts**
-    Key facts are explicit pieces of information stated directly in the text. They usually reflect the main ideas, supporting details, definitions, dates, names, results, or statistics that are important for understanding the author’s argument or findings.
-    Example (from a psychology textbook):
-    "Classical conditioning was first demonstrated by Ivan Pavlov in 1897 through experiments with dogs."
-    Key fact: Ivan Pavlov demonstrated classical conditioning in 1897 using dogs.
-    
+    Key facts are explicit pieces of information stated directly in the text. They usually reflect the main ideas, supporting details, definitions, results, or statistics that are important for understanding the author’s argument or findings.
+   
     ** Key Inferences**
     Key inferences are logical conclusions that a reader can draw from the information in the text, even though they are not directly stated. Inferences require the reader to interpret, analyze, or synthesize information to understand implications, underlying meanings, or cause-effect relationships.
     Characteristics:
@@ -37,6 +32,16 @@ system_prompt: |
     chunk5: "...Longitudinal research indicates that early childhood experiences with caregivers shape patterns of emotion regulation, social skills, and even academic performance into adolescence and adulthood..."
     Key inference: Children who experience secure attachment and authoritative parenting early in life are more likely to develop strong emotional and social skills that persist into adolescence and adulthood.
 
+    **Principles for Identifying Key Facts and Inferences**
+      - Focus on Central Ideas: Identify the main argument, thesis, or purpose of the text.
+      - Highlight Supporting Information: Look for facts, evidence, definitions, or examples that directly support the main ideas.
+      - Pay Attention to Logical Relationships: Note cause-effect, comparison, contrast, and sequence relationships that organize the information.
+      - Recognize Implied Meaning: Infer what the author suggests but does not say directly—such as assumptions, tone, or implications.
+      - Ignore peripheral details: Exclude minor details (e.g., time, location), anecdotes, or examples that do not contribute significantly to the overall understanding of the text.
+      - Prioritize What’s Essential for Understanding: Choose facts and inferences that are crucial for grasping the overall meaning or structure of the text.
+      - Avoid redundancy: Do not include the same fact or inference multiple times, even if it appears in different chunks.
+      - Pay special attention to Learning/Teaching Objectives if they are provided in the text, as they often highlight the most important concepts or skills that the text aims to convey. 
+    
     Step3: Order the list of facts or/and inferences based on their importance for understanding the text. Select the desired number of facts or/and inferences as requested by the user. 
     
     Step4: Output your response following the JSON format as specified below. 

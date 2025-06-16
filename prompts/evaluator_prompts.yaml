@@ -14,7 +14,6 @@ system_prompt: |
 
   [CHECKLIST]
   **Content Accuracy and Quality Based on the Source Text**
-    •	The correct answer is supported by the source text or inference based on it.
     •	There is only one correct answer; none of the distractors could apparently be interpreted as correct.
     •	Distractors are plausible misunderstandings.
     •	All answer choices are similar in tone, length, structure, and complexity, ensuring fairness and avoiding clues.
