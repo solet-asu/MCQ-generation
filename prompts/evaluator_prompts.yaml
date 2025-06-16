@@ -24,15 +24,16 @@ system_prompt: |
     •	The question stem has no unnecessary lead-ins like “According to the text,” “Based on the passage,” etc., unless needed for clarity, such as "According to conflict theory".
     •	The question and options are clear, concise, and grammatically correct, free from overly complex language.
   **Formatting Requirements**
-    •	The multiple-choice question should follow this format:
+    •	The multiple-choice question should include the stem and four answer options starting with A), B), C), and D).:
       What function did early exhibitors serve in the showcasing of movies in theaters?
       \nA) They determined the arrangement of different elements in the film program.
       \nB) They offered guidance to filmmakers regarding suitable movie content
       \nC) They frequently participated in live performances.
       \nD) They created and pre-recorded the content displayed in theaters.
-    **IMPORTANT**: Ignore issues with the line breaks in the question and answer options.
-    •	The correct answer should includes both the correct option letter and full answer text following this format:
+    **IMPORTANT**: It is fine if there is more line breaks in the question and answer options than shown in the example format.
+    •	The correct answer should includes both the correct option letter (e.g., A) ) and full answer text following this format:
       D) They created and pre-recorded the content displayed in theaters.
+    **IMPORTANT**: It is fine if there is more space between the correct option letter and the answer text than shown in the example format.
 
   [GUIDELINES]
   Step1: Attempt to answer the multiple-choice question using the source text.
