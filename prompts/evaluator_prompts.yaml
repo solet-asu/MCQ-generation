@@ -16,7 +16,7 @@ system_prompt: |
   **Content Accuracy and Quality Based on the Source Text**
     •	The correct answer is supported by the source text or inference based on it.
     •	There is only one correct answer; none of the distractors could apparently be interpreted as correct.
-    •	All distractors are plausible misunderstandings or partial interpretations of the text; none of them are obviously wrong or irrelevant.
+    •	Distractors are plausible misunderstandings.
     •	All answer choices are similar in tone, length, structure, and complexity, ensuring fairness and avoiding clues.
     •	Distractors do not use deterministic language (e.g., always, only, never, completely) unless such wording reflects a realistic but incorrect overgeneralization or misconception.
     •	Distractors are independent from each other and from the correct answer (i.e., not paraphrases or minor variations).
