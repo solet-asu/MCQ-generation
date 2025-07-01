@@ -21,7 +21,7 @@ system_prompt: |
     •	Distractors are independent from each other and from the correct answer (i.e., not paraphrases or minor variations).
   **Language Quality**
     •	The question stem has no unnecessary lead-ins like “According to the text,” “Based on the passage,” etc., unless needed for clarity, such as "According to conflict theory".
-    •	The question and options are clear, concise, and grammatically correct, free from overly complex language.
+    •	The question and options are clear, concise, and grammatically correct, free from redundancy and overly complex language.
   **Formatting Requirements**
     •	The multiple-choice question should include the stem and four answer options starting with A), B), C), and D).:
       What function did early exhibitors serve in the showcasing of movies in theaters?

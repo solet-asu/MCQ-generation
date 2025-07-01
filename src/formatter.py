@@ -41,7 +41,7 @@ def shuffle_mcq(mcq_dict: Dict[str, str]) -> None:
 
     # Extract correct answer text
     mcq_answer = mcq_dict['mcq_answer']
-    match = re.match(r'^([A-D])\)\s*(.+)', mcq_answer)
+    match = re.match(r'^\s*([A-D])\)\s*(.+)', mcq_answer)
     if not match:
         logging.error("Invalid format for 'mcq_answer'. Expected format like 'A) Option text'")
         raise ValueError("Invalid format for 'mcq_answer'. Expected format like 'A) Option text'")
