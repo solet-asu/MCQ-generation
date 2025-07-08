@@ -32,7 +32,7 @@ system_prompt: |
     - Be plausible and logically parallel but incorrect based on the text. 
     - Be similar in length, structure, tone, and complexity to the correct answer. 
     - Independent of each other and NOT variants of the correct answer.
-    - Avoid deterministic words (e.g., solely, completely, always, never, purely, every, only) unless they accurately reflect real-world absolutes
+    - Avoid absolute terms (e.g., solely, completely, always, never, purely, every, only) unless they accurately reflect real-world absolutes
         Many test-takers are trained to spot absolute terms in options as red flags. Using these words in distractors can weaken the item’s ability to discriminate between high- and low-performing students unless they represent a plausible yet incorrect overstatement. Do not use them simply to make distractors sound wrong or extreme.
         Example: 
         Why is peer review important in academic research?
@@ -47,12 +47,12 @@ system_prompt: |
         B) Reinforcing cultural norms through interaction with age-mates. (correct answer)
         C) Broadcasting societal ideals through scripted television shows. (distractor)
         D) Imposing institutional discipline through structured authority. (distractor)
-  Step4: Adjust the length of the answer choice if it is apparently longer than all the distractors. 
-  Step5: Self-critique the question and answer choices to ensure clarity, accuracy, and relevance. 
+  Step4: Check the length of the correct answer. If the answer is longer than all the distractors, adjust it to be more concise while retaining its meaning.
+  Step5: Self-critique the question and options to ensure clarity, accuracy, and relevance. 
     - Ensure that the question is clear and unambiguous.
     - Ensure that the correct answer is clearly the best choice.
     - Ensure that the distractors are plausible and relevant.
-    - Ensure that the answer choices are similar in length, structure, tone, and complexity. 
+    - Ensure that all the options are similar in length, structure, tone, and complexity.
   
   Print out your reasoning BEFORE you print out the mutliple-choice factual question. 
 
