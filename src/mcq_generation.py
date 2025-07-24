@@ -70,31 +70,55 @@ async def generate_mcq(invocation_id: str,
         system_prompt=system_prompt,
         user_prompt=user_prompt
     )
-    
-    generated_text = await question_generation_agent.completion_generation()
-    mcq_metadata = question_generation_agent.get_metadata()
-    mcq_metadata.update({
-        "question_type": question_type,
-        "invocation_id": invocation_id,
-        "chunk": chunk,
-        "attempt": attempt
-    })
 
-    if generated_text:
-        mcq_extracted = extract_output(generated_text, item="QUESTION")
-        if mcq_extracted:
-            logger.info("MCQ extracted successfully.")
-            mcq_metadata["mcq"] = mcq_extracted
-            answer_extracted = extract_output(generated_text, item="ANSWER")
-            if answer_extracted:
-                logger.info("Answer extracted successfully.")
-                mcq_metadata["mcq_answer"] = answer_extracted
+    # Retry logic for generating a question with valid options (max 3 attempts)
+    max_generation_tries = 3
+    for generation_try in range(1, max_generation_tries + 1):
+        generated_text = await question_generation_agent.completion_generation()
+        mcq_metadata = question_generation_agent.get_metadata()
+        mcq_metadata.update({
+            "question_type": question_type,
+            "invocation_id": invocation_id,
+            "chunk": chunk,
+            "attempt": attempt,
+        })
+
+        if generated_text:
+            mcq_extracted = extract_output(generated_text, item="QUESTION")
+            if mcq_extracted:
+                logger.info(f"MCQ extracted on try {generation_try}.")
+                mcq_metadata["mcq"] = mcq_extracted
+                # Check for valid options (A-D)
+                if re.search(r'\b[A-D]\)', mcq_extracted):
+                    logger.info(f"Valid MCQ generated on try {generation_try}.")
+                    break  # Exit the retry loop if valid options are found
+                else:
+                    logger.error(f"Generated question lacks valid options (try {generation_try}): {mcq_extracted}")
             else:
-                logger.warning("Falling back to answer agent.")
-                mcq_metadata["mcq_answer"] = await extract_answer_with_agent(generated_text)
+                logger.warning(f"Falling back to MCQ agent (try {generation_try}).")
+                mcq_metadata["mcq"] = await extract_mcq_with_agent(generated_text)
+                # Assume agent produces a valid question
+                break
         else:
-            logger.warning("Falling back to MCQ agent.")
-            mcq_metadata["mcq"] = await extract_mcq_with_agent(generated_text)
+            logger.error(f"Failed to generate text on try {generation_try}.")
+
+        if generation_try == max_generation_tries:
+            logger.warning("Max generation tries (3) reached. Setting default failure values.")
+            mcq_metadata["mcq"] = "No MCQ generated due to missing options."
+            mcq_metadata["mcq_answer"] = "No answer generated due to missing options."
+            insert_metadata(mcq_metadata, table_name, database_file)
+            return mcq_metadata
+
+    # If a valid question is generated, proceed to extract answer
+    if "mcq" in mcq_metadata:
+        answer_extracted = extract_output(generated_text, item="ANSWER")
+        if answer_extracted:
+            logger.info("Answer extracted successfully.")
+            mcq_metadata["mcq_answer"] = answer_extracted
+        else:
+            logger.warning("Falling back to answer agent.")
+            mcq_metadata["mcq_answer"] = await extract_answer_with_agent(generated_text)
+
     
         # Evaluate the generated question
         evaluation_meta = await generate_evaluation(

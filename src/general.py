@@ -3,6 +3,7 @@ from typing import List, Union, Dict
 import json
 import logging
 import csv
+import pandas as pd
 
 
 # Configure logging
@@ -155,3 +156,27 @@ def extract_json_string(text: str) -> Dict:
     raise ValueError("Could not find a complete JSON object in the input string")
 
 
+def combine_csv_files(directory_path: str, output_file: str) -> None:
+    """
+    Combine all CSV files in the specified directory into a single CSV file.
+
+    :param directory_path: The path to the directory containing CSV files.
+    :param output_file: The path to the output CSV file.
+    """
+    # Get all CSV files in the directory
+    csv_files = get_files_in_directory(directory_path)
+
+    # Initialize a list to store DataFrames
+    dataframes = []
+
+    # Iterate over each file and read it into a DataFrame
+    for file in csv_files:
+        if file.endswith('.csv'):
+            df = pd.read_csv(file)
+            dataframes.append(df)
+
+    # Concatenate all DataFrames
+    combined_df = pd.concat(dataframes, ignore_index=True)
+
+    # Save the combined DataFrame to a CSV file
+    combined_df.to_csv(output_file, index=False)

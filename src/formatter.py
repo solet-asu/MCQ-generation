@@ -25,8 +25,11 @@ def shuffle_mcq(mcq_dict: Dict[str, str]) -> None:
     mcq_str = mcq_dict['mcq']
 
     # Find the index where the first option (A)-D)) appears
-    match = re.search(r'(?<![A-Z])([A-D]\))', mcq_str)
+    match = re.search(r'\b[A-D]\)', mcq_str)
     if not match:
+        # If no valid option labels (A)-D)) found, log an error and raise an exception and print the mcq_str
+        logging.error(f"Invalid MCQ string format: {mcq_str}")
+        logging.error(f"No options in the mcq: {mcq_dict}")
         logging.error("No valid option labels (A)-D)) found in MCQ string")
         raise ValueError("No valid option labels (A)-D)) found in MCQ string")
 
