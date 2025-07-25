@@ -180,3 +180,30 @@ def combine_csv_files(directory_path: str, output_file: str) -> None:
 
     # Save the combined DataFrame to a CSV file
     combined_df.to_csv(output_file, index=False)
+
+
+def remove_duplicates_by_column(input_file: str, column_name: str, output_file: str) -> None:
+    """
+    Remove duplicated rows based on the specified column from a CSV file.
+
+    Parameters:
+    - input_file (str): Path to the input CSV file.
+    - column_name (str): Name of the column to check for duplicates (e.g., "Question").
+    - output_file (str): Path to the output CSV file without duplicates.
+    """
+    try:
+        # Load the CSV file into a DataFrame
+        df = pd.read_csv(input_file)
+        
+        # Remove duplicates based on the specified column
+        df_deduplicated = df.drop_duplicates(subset=column_name, keep='first')
+        
+        # Save the deduplicated DataFrame to a new CSV file
+        df_deduplicated.to_csv(output_file, index=False)
+        
+        print(f"Successfully removed duplicates. Output saved to '{output_file}'.")
+        
+    except FileNotFoundError:
+        print(f"Error: File '{input_file}' not found.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
