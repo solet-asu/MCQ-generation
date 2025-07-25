@@ -1,5 +1,13 @@
 import os
-from typing import List
+from typing import List, Union, Dict
+import json
+import logging
+import csv
+import pandas as pd
+
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
 
 def get_files_in_directory(directory_path: str) -> List[str]:
     """
@@ -29,6 +37,31 @@ def read_text_file(file_path: str) -> str:
         return "Error: File not found."
     except Exception as e:
         return f"Error: {e}"
+    
+    
+def read_csv_file(file_path: str) -> List[Dict[str, str]]:
+    """
+    Reads a CSV file and returns its content as a list of dictionaries.
+    
+    Each dictionary represents a row in the CSV, with keys as column headers.
+    
+    Args:
+        file_path (str): The path to the CSV file.
+        
+    Returns:
+        List[Dict[str, str]]: A list of dictionaries representing the CSV rows.
+    """
+    
+    try:
+        with open(file_path, mode='r', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            return [row for row in reader]
+    except FileNotFoundError:
+        logging.error(f"File not found: {file_path}")
+        return []
+    except Exception as e:
+        logging.error(f"Error reading CSV file: {e}")
+        return []
     
 
 def count_words(input_string: str) -> int:
@@ -62,3 +95,115 @@ def count_paragraphs(input_string: str) -> int:
     
     # Filter out empty strings and return the count
     return len([p for p in paragraphs if p.strip()])
+
+
+
+def dict_check_and_convert(obj: Union[str, dict]) -> dict:
+    """
+    Ensures that the input object is a dictionary.
+    If the object is a JSON-formatted string, it parses it into a dictionary.
+    
+    Args:
+        obj (str | dict): Input that may be a dictionary or a JSON string.
+
+    Returns:
+        dict: A dictionary parsed from the input or the input itself if already a dict.
+              Returns an empty dictionary if parsing fails.
+    """
+    if isinstance(obj, str):
+        try:
+            return json.loads(obj)
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON: {e}")
+            return {}
+    elif isinstance(obj, dict):
+        return obj
+    else:
+        print(f"Unsupported input type: {type(obj)}. Expected str or dict.")
+        return {}
+    
+
+
+
+def extract_json_string(text: str) -> Dict:
+    """
+    Extract a valid JSON object from a string that may contain extra content
+    before or after the actual JSON. Returns the parsed JSON object as a dict.
+    
+    Raises ValueError if no valid JSON object can be found.
+    """
+    start = text.find('{')
+    if start == -1:
+        logging.error("No JSON object found in input string")
+        raise ValueError("No JSON object found in input string")
+
+    # Try to find the matching closing brace
+    brace_count = 0
+    for i in range(start, len(text)):
+        if text[i] == '{':
+            brace_count += 1
+        elif text[i] == '}':
+            brace_count -= 1
+            if brace_count == 0:
+                json_str = text[start:i+1]
+                try:
+                    return json.loads(json_str)
+                except json.JSONDecodeError as e:
+                    logging.error(f"Invalid JSON content: {e}")
+                    raise ValueError(f"Invalid JSON content: {e}")
+
+    logging.error("Could not find a complete JSON object in the input string")
+    raise ValueError("Could not find a complete JSON object in the input string")
+
+
+def combine_csv_files(directory_path: str, output_file: str) -> None:
+    """
+    Combine all CSV files in the specified directory into a single CSV file.
+
+    :param directory_path: The path to the directory containing CSV files.
+    :param output_file: The path to the output CSV file.
+    """
+    # Get all CSV files in the directory
+    csv_files = get_files_in_directory(directory_path)
+
+    # Initialize a list to store DataFrames
+    dataframes = []
+
+    # Iterate over each file and read it into a DataFrame
+    for file in csv_files:
+        if file.endswith('.csv'):
+            df = pd.read_csv(file)
+            dataframes.append(df)
+
+    # Concatenate all DataFrames
+    combined_df = pd.concat(dataframes, ignore_index=True)
+
+    # Save the combined DataFrame to a CSV file
+    combined_df.to_csv(output_file, index=False)
+
+
+def remove_duplicates_by_column(input_file: str, column_name: str, output_file: str) -> None:
+    """
+    Remove duplicated rows based on the specified column from a CSV file.
+
+    Parameters:
+    - input_file (str): Path to the input CSV file.
+    - column_name (str): Name of the column to check for duplicates (e.g., "Question").
+    - output_file (str): Path to the output CSV file without duplicates.
+    """
+    try:
+        # Load the CSV file into a DataFrame
+        df = pd.read_csv(input_file)
+        
+        # Remove duplicates based on the specified column
+        df_deduplicated = df.drop_duplicates(subset=column_name, keep='first')
+        
+        # Save the deduplicated DataFrame to a new CSV file
+        df_deduplicated.to_csv(output_file, index=False)
+        
+        print(f"Successfully removed duplicates. Output saved to '{output_file}'.")
+        
+    except FileNotFoundError:
+        print(f"Error: File '{input_file}' not found.")
+    except Exception as e:
+        print(f"An error occurred: {e}")

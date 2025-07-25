@@ -8,7 +8,7 @@ import prompts
 logger = logging.getLogger(__name__)
 
 @functools.cache
-def get_prompts(filename: str = "details_prompts.yaml") -> dict[str, str]:
+def get_prompts(filename: str = "fact_prompts.yaml") -> dict[str, str]:
     """
     Retrieve prompts from a YAML file.
 

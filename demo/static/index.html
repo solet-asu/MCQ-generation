@@ -46,11 +46,13 @@
         }
 
         .options {
+            margin: 10px 0;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             flex: 0.5;
+            gap: 20px;
         }
 
         textarea {
@@ -65,7 +67,7 @@
         }
 
         select, input[type="submit"] {
-            margin: 10px 0;
+            margin-top: 20px;
             padding: 10px;
             font-size: 16px;
             border-radius: 8px;
@@ -131,33 +133,60 @@
         </div>
 
         <div class="options">
-            <h2>Options</h2>
-            <label for="question_type">Question Type:</label>
-            <select id="question_type" name="question_type" required>
-                <option value="details">Details</option>
-                <option value="inference">Inference</option>
-                <option value="main_idea">Main Idea</option>
-            </select>
+            <h2>Specify the number of different types of questions you want to generate:</h2>
+
+            <label>Factual Questions:
+                <input
+                    type="number"
+                    id="fact"
+                    min="0"
+                    value="1"
+                    required>
+            </label>
+
+            <label>Inference Questions:
+                <input
+                    type="number"
+                    id="inference"
+                    min="0"
+                    value="1"
+                    required>
+            </label>
+
+            <label>Main Idea Questions:
+                <input
+                    type="number"
+                    id="main_idea"
+                    min="0"
+                    value="1"
+                    required>
+            </label>
+
             <input type="submit" value="Generate Questions" onclick="generateQuestions()">
         </div>
-
         <div class="questions" id="questions">
             <h2>Generated Questions</h2>
             <div class="spinner" id="spinner"></div>
-            <!-- Questions will be displayed here -->
+            <div id="questions-container">
+                <!-- Questions will be displayed here -->
+            </div>
         </div>
     </div>
 
     <script>
         async function generateQuestions() {
             const text = document.getElementById('text').value;
-            const questionType = document.getElementById('question_type').value;
+            const fact = document.getElementById('fact').value;
+            const inference = document.getElementById('inference').value;
+            const mainIdea = document.getElementById('main_idea').value;
 
+            const questionsContainer = document.getElementById('questions-container');
             const spinner = document.getElementById('spinner');
-            const questionsDiv = document.getElementById('questions');
 
-            // Show the spinner
+            // Show spinner and clear previous questions
             spinner.style.display = 'block';
+            console.log("spinner showing up");
+            questionsContainer.innerHTML = '';
 
             try {
                 const response = await fetch('http://localhost:8000/generate_mcq', {
@@ -167,7 +196,9 @@
                     },
                     body: JSON.stringify({
                         text: text,
-                        question_type: questionType
+                        fact: parseInt(fact),
+                        inference: parseInt(inference),
+                        main_idea: parseInt(mainIdea)
                     })
                 });
 
@@ -175,65 +206,61 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
-                const questionData = await response.json();
-                const mcq = questionData.mcq;
-                const mcqAnswer = questionData.mcq_answer;
+                const data = await response.json();
+                spinner.style.display = 'none';
+                console.log("spinner hiding up");
 
-                questionsDiv.innerHTML = '<h2>Generated Questions</h2>'; // Reset the content
-                spinner.style.display = 'none'; // Hide the spinner
-
-                console.log("mcq:", mcq);
-                console.log("mcq_answer:", mcqAnswer);
-
-                // Split the MCQ into stem and choices
-                const pattern = /(?=\(?[A-D]\))/;  // splits at spaces before A), B), C), or D)
-                const [stem, ...choices] = mcq.trim().split(pattern);
-
-                // Create divs for MCQ and answer
-                const mcqDiv = document.createElement('div');
-                mcqDiv.className = 'mcq_question';
-
-                // Create a paragraph for the stem
-                const stemParagraph = document.createElement('p');
-                stemParagraph.textContent = stem;
-                mcqDiv.appendChild(stemParagraph);
-
-                // Create a container for the choices
-                const choicesContainer = document.createElement('div');
-                choicesContainer.className = 'choices-container';
-
-                // Add each choice as a separate paragraph
-                choices.forEach(choice => {
-                    const choiceParagraph = document.createElement('p');
-                    choiceParagraph.textContent = choice.trim();
-                    choicesContainer.appendChild(choiceParagraph);
+                data.forEach(item => {
+                    const mcqDiv = createMCQElement(item);
+                    questionsContainer.appendChild(mcqDiv);
+                    questionsContainer.appendChild(document.createElement('hr'));
                 });
-
-                mcqDiv.appendChild(choicesContainer);
-                
-                console.log("stem:", stem);
-                console.log("choices:", choices);
-
-                const answerDiv = document.createElement('div');
-                answerDiv.className = 'answer';
-
-                const checkAnswerButton = document.createElement('button');
-                checkAnswerButton.textContent = 'Check Answer';
-                checkAnswerButton.onclick = function() {
-                    checkAnswerButton.style.display = 'none';
-                    answerDiv.innerHTML = `<p><strong>Answer:</strong> ${mcqAnswer}</p>`;
-                };
-
-                answerDiv.appendChild(checkAnswerButton);
-
-                questionsDiv.appendChild(mcqDiv);
-                questionsDiv.appendChild(answerDiv);
 
             } catch (error) {
                 console.error('Error fetching questions:', error);
-                questionsDiv.innerHTML = `<strong>Error:</strong> Could not generate questions. Please try again later.`;
-                spinner.style.display = 'none'; // Hide the spinner
+                questionsContainer.innerHTML = "<strong>Error:</strong> Could not generate questions. Please try again later.";
+                spinner.style.display = 'none';
             }
+        }
+
+        function isValidNumber(value) {
+            return Number.isInteger(Number(value)) && value.trim() !== '';
+        }
+
+        function createMCQElement(item) {
+            const mcqDiv = document.createElement('div');
+            mcqDiv.className = 'mcq_question';
+
+            const pattern = /(?=\(?[A-D]\))/;  // splits at spaces before A), B), C), or D)
+            const [stem, ...choices] = item.mcq.trim().split(pattern);
+
+            const stemParagraph = document.createElement('p');
+            stemParagraph.textContent = stem;
+            mcqDiv.appendChild(stemParagraph);
+
+            const choicesContainer = document.createElement('div');
+            choices.forEach(choice => {
+                const choiceParagraph = document.createElement('p');
+                choiceParagraph.textContent = choice.trim();
+                choicesContainer.appendChild(choiceParagraph);
+            });
+
+            mcqDiv.appendChild(choicesContainer);
+
+            const answerDiv = document.createElement('div');
+            answerDiv.className = 'answer';
+
+            const checkAnswerButton = document.createElement('button');
+            checkAnswerButton.textContent = 'Check Answer';
+            checkAnswerButton.onclick = function () {
+                checkAnswerButton.style.display = 'none';
+                answerDiv.innerHTML = `<p><strong>Answer:</strong> ${item.mcq_answer}</p>`;
+            };
+
+            answerDiv.appendChild(checkAnswerButton);
+            mcqDiv.appendChild(answerDiv);
+
+            return mcqDiv;
         }
     </script>
 </body>

@@ -21,6 +21,7 @@ dependencies = [
     "uvicorn",
     "python-dotenv",
     "spacy",
+    "python-Levenshtein",
 ]
 
 [tool.setuptools]
