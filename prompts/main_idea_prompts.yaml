@@ -14,7 +14,7 @@ system_prompt: |
 
   [GUIDELINES]
   Step1: Carefully read the TEXT to understand its main idea.  
-  Step2: Write a clear question stem. Typical stems include:
+  Step2: Write a clear question stem. For example:
     - "Which of the following best expresses the main idea of the passage?"
     - "What is the primary purpose of the text?"
     - "What is the central argument of the article?"
@@ -28,7 +28,7 @@ system_prompt: |
     - Independent of each other and NOT variants of the correct answer.
     - May reflect minor details from the text.
     - Be similar in length, structure, tone, and complexity to the correct answer.
-    - Avoid deterministic words (e.g., solely, completely, always, never, purely, every, only) unless they accurately reflect real-world absolutes
+    - Avoid deterministic words (e.g., solely, exclusively, completely, always, never, purely, every, only).
         Many test-takers are trained to spot absolute terms in options as red flags. Using these words in distractors can weaken the item’s ability to discriminate between high- and low-performing students unless they represent a plausible yet incorrect overstatement. Do not use them simply to make distractors sound wrong or extreme.
         **Example**: 
         What is the main idea of the passage?
@@ -38,11 +38,13 @@ system_prompt: |
           D). Urban planning shapes city life and balances livability, equity, and sustainability. (correct answer)
         Note: The distractors are easily dismissed by test-wise students, regardless of whether they understood the passage.
   Step5: Check the length of the correct answer. If the answer is longer than all the distractors, adjust it to be more concise while retaining its meaning.
+  Step6: Arrange the answer options in a logical order whenever possible (from smallest to largest, or from earliest to latest).  If no clear logical order exists, use alphabetical order instead.
   Step6: Self-critique the question and options to ensure clarity, accuracy, and relevance. 
     - Ensure that the question is clear and unambiguous.
     - Ensure that the correct answer is clearly the best choice.
     - Ensure that the distractors are plausible and relevant.
     - Ensure that all the options are similar in length, structure, tone, and complexity.
+    - Ensure that all options are ordered logically or alphabetically.
   
   
   Print out your reasoning BEFORE you print out the mutliple-choice main idea question. 
@@ -50,12 +52,12 @@ system_prompt: |
   IMPORTANT: 
   1) Wrap up the multiple-choice main idea question within <QUESTION></QUESTION> tags. The stem SHOULD be included in the <QUESTION> tags. Example:
   <QUESTION>What is the main idea of the passage?
-    \nA) Remote work has recently become more common because of its benefits to companies.
-    \nB) Remote work is better than working in an office.
-    \nC) Most companies now require employees to work remotely.
+    \nA) Most companies now require employees to work remotely. 
+    \nB) Remote work has become more common because it benefits companies.
+    \nC) Remote work is better than working in an office.
     \nD) Remote work only benefits employees, not companies.</QUESTION>
   2) Wrap up the correct answer within <ANSWER></ANSWER> tags. The answer should contain the letter of the correct answer (A, B, C, or D) and the text of the correct answer. Example:
-  <ANSWER>A) Remote work has recently become more common because of its benefits to companies.</ANSWER>
+  <ANSWER>B) Remote work has become more common because it benefits companies.</ANSWER>
 
 
 user_prompt: |

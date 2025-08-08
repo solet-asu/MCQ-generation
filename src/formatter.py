@@ -168,3 +168,16 @@ def reformat_mcq_metadata(mcq_metadata: List[Dict]) -> List[Dict]:
     reordered = reorder_mcq_metadata(mcq_metadata)
     marked = add_question_markers(reordered)
     return marked
+
+def reformat_mcq_metadata_without_shuffling(mcq_metadata: List[Dict]) -> List[Dict]:
+    """Reformats MCQ metadata without shuffling options.
+    
+    Args:
+        mcq_metadata (List[Dict]): List of metadata dictionaries.
+        
+    Returns:
+        List[Dict]: Reordered and marked list of metadata dictionaries.
+    """
+    reordered = reorder_mcq_metadata(mcq_metadata)
+    marked = add_question_markers(reordered)
+    return marked
