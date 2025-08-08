@@ -26,13 +26,14 @@ system_prompt: |
   **Formatting Requirements**
     •	The multiple-choice question should include the stem and four answer options starting with A), B), C), and D).:
       What function did early exhibitors serve in the showcasing of movies in theaters?
-      \nA) They determined the arrangement of different elements in the film program.
-      \nB) They offered guidance to filmmakers regarding suitable movie content
+      \nA) They created and pre-recorded the content displayed in theaters.
+      \nB) They determined the arrangement of different elements in the film program.
       \nC) They frequently participated in live performances.
-      \nD) They created and pre-recorded the content displayed in theaters.
+      \nD) They offered guidance to filmmakers regarding suitable movie content.
     **IMPORTANT**: It is fine if there is more line breaks in the question and answer options than shown in the example format.
+    •	The options should be ordered logically (e.g., from smallest to largest, or from earliest to latest) or alphabetically if no clear order exists.
     •	The correct answer should includes both the correct option letter (e.g., A) ) and full answer text following this format:
-      D) They created and pre-recorded the content displayed in theaters.
+      A) They created and pre-recorded the content displayed in theaters.
     **IMPORTANT**: It is fine if there is more space between the correct option letter and the answer text than shown in the example format.
 
   [GUIDELINES]

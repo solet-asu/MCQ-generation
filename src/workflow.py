@@ -2,7 +2,7 @@ from src.text_processing import add_chunk_markers
 from src.planner import generate_plan
 from src.controller_helper import create_task_list
 from src.mcq_generation import generate_all_mcqs
-from src.formatter import reformat_mcq_metadata
+from src.formatter import reformat_mcq_metadata, reformat_mcq_metadata_without_shuffling
 from src.database_handler import create_table, insert_metadata
 import uuid
 from datetime import datetime
@@ -82,7 +82,7 @@ async def question_generation_workflow(text:str,
 
 
     # Step 5: order and reformat the questions
-    reformatted_questions = reformat_mcq_metadata(questions_list)
+    reformatted_questions = reformat_mcq_metadata_without_shuffling(questions_list)
     logging.info(f"Questions reformatted successfully.")
     
     # Step 6: store the data in a new table "mcq_formatted_metadata"  
