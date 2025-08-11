@@ -15,9 +15,9 @@ system_prompt: |
   [GUIDELINES]
   Step1: Carefully read the TEXT to understand its main idea.  
   Step2: Write a clear question stem. For example:
-    - "Which of the following best expresses the main idea of the passage?"
+    - "Which of the following best expresses the main idea of the text?"
     - "What is the primary purpose of the text?"
-    - "What is the central argument of the article?"
+    - "Which statement best summarizes the text?"
   Step3: Create the correct answer option. 
     - It should accurately reflect the main idea.
     - It should be broad enough to cover the whole passage but specific enough to show real understanding.

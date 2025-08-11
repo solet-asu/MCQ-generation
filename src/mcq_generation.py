@@ -178,6 +178,8 @@ async def generate_mcq(invocation_id: str,
         
     return mcq_metadata
 
+async def generate_mcq_quality_first():
+    pass
 
 async def extract_answer_with_agent(generated_text: str) -> str:
     """Extract the answer from the generated text using an agent."""
