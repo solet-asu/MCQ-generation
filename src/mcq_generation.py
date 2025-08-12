@@ -178,7 +178,29 @@ async def generate_mcq(invocation_id: str,
         
     return mcq_metadata
 
-async def generate_mcq_quality_first():
+async def generate_mcq_quality_first(invocation_id: str, 
+                      model: str, 
+                      task: Dict, 
+                      table_name: str = "mcq_metadata", 
+                      database_file: str = '../database/mcq_metadata.db',
+                      max_attempt: int = 3,
+                      attempt: int = 1,
+                      candidate_num: int = 5) -> Dict:
+    # set up ranking model medata data template
+    ranking_metadata = []
+    candidate_questions = []
+    for i in range(candidate_num):
+        # get the mcq_metadata
+        mcq_metadata = generate_mcq(invocation_id, model, task, table_name, database_file, max_attempt, attempt)
+        
+        if mcq_metadata:
+            mcq = mcq_metadata["mcq"]
+            mcq_answer = mcq_metadata["mcq_answer"]
+            candidate_questions.append({"question_number": i+1, 
+                                        "question": mcq,
+                                        "answer": mcq_answer})
+
+
     pass
 
 async def extract_answer_with_agent(generated_text: str) -> str:

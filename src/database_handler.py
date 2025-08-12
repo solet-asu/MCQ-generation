@@ -2,7 +2,7 @@ import sqlite3
 import csv
 import os
 import sqlite3
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union
 from datetime import datetime 
 import logging
 
@@ -62,7 +62,7 @@ def insert_metadata(
     metadata: Dict[str, Any],
     table_name: str,
     database_file: str,
-) -> None:
+    ) -> None:
     """Insert metadata into a table dynamically."""
     try:
         schema = TABLE_SCHEMAS[table_name]
