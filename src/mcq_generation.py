@@ -178,30 +178,146 @@ async def generate_mcq(invocation_id: str,
         
     return mcq_metadata
 
-async def generate_mcq_quality_first(invocation_id: str, 
-                      model: str, 
-                      task: Dict, 
-                      table_name: str = "mcq_metadata", 
-                      database_file: str = '../database/mcq_metadata.db',
-                      max_attempt: int = 3,
-                      attempt: int = 1,
-                      candidate_num: int = 5) -> Dict:
-    # set up ranking model medata data template
-    ranking_metadata = []
-    candidate_questions = []
-    for i in range(candidate_num):
-        # get the mcq_metadata
-        mcq_metadata = generate_mcq(invocation_id, model, task, table_name, database_file, max_attempt, attempt)
+
+async def generate_candidate_mcqs_async(
+    invocation_id: str,
+    model: str,
+    task: Dict,
+    mcq_table_name: str,
+    database_file: str,
+    max_attempt: int,
+    attempt: int
+) -> Dict:
+    """
+    Asynchronously generate a single MCQ.
+    """
+    try:
+        mcq_metadata = await generate_mcq(invocation_id, model, task, mcq_table_name, database_file, max_attempt, attempt)
+        return mcq_metadata
+    except Exception as e:
+        logger.error(f"Error generating MCQ: {e}")
+        return {}
+
+async def generate_mcq_quality_first(
+    invocation_id: str,
+    model: str,
+    task: Dict,
+    mcq_table_name: str = "mcq_metadata",
+    ranking_table_name: str = "ranking_metadata",
+    database_file: str = '../database/mcq_metadata.db',
+    max_attempt: int = 3,
+    attempt: int = 1,
+    candidate_num: int = 5
+) -> Dict:
+    """
+    Generate and evaluate multiple-choice questions (MCQs) and rank them.
+
+    Args:
+        invocation_id (str): Unique identifier for the invocation.
+        model (str): Model to be used for generation.
+        task (Dict): Task details including question type, text, and context.
+        mcq_table_name (str): Name of the table for MCQ metadata.
+        ranking_table_name (str): Name of the table for ranking metadata.
+        database_file (str): Path to the database file.
+        max_attempt (int): Maximum number of attempts for generation.
+        attempt (int): Current attempt number.
+        candidate_num (int): Number of candidate questions to generate.
+
+    Returns:
+        Dict: Metadata of the ranking process.
+    """
+    # Create tables for storing metadata
+    create_table(mcq_table_name, database_file)
+    create_table(ranking_table_name, database_file)
+
+    # Generate multiple candidate questions concurrently
+    tasks = [
+        generate_candidate_mcqs_async(invocation_id, model, task, mcq_table_name, database_file, max_attempt, attempt)
+        for _ in range(candidate_num)
+    ]
+    candidate_questions_metadata = await asyncio.gather(*tasks)
+
+    # Filter out any None or empty results
+    candidate_questions = [
+        {"question_number": i, "question": mcq["mcq"], "answer": mcq["mcq_answer"]}
+        for i, mcq in enumerate(candidate_questions_metadata) if mcq
+    ]
+
+    # Set up prompts for the ranking model
+    ranking_prompt_file = "ranking_model.yaml"
+    ranking_prompts = get_prompts(ranking_prompt_file)
+    system_prompt = ranking_prompts.get("system_prompt", "")
+    user_prompt = ranking_prompts.get("user_prompt", "").format(
+        question_type=task.get("question_type", "").lower(),
+        text=task.get("text", ""),
+        context=task.get("context", ""),
+        candidate_questions=candidate_questions
+    )
+
+    # Initialize the agent with the prompt
+    ranking_agent = Agent(
+        model=model,
+        system_prompt=system_prompt,
+        user_prompt=user_prompt
+    )
+
+    # Attempt to generate the plan
+    try:
+        generated_text = await ranking_agent.completion_generation()
+    except Exception as e:
+        logger.error(f"Error during completion generation: {e}")
+        generated_text = None
+
+    ranking_metadata = ranking_agent.get_metadata()
+    ranking_metadata.update({
+        "invocation_id": invocation_id,
+        "question_type": task.get("question_type", ""),
+        "content": task.get("content", ""),
+        "text": task.get("text", ""),
+        "context": task.get("context", ""),
+        "candidate_questions": json.dumps(candidate_questions),
+        "system_prompt": system_prompt,
+        "user_prompt": user_prompt,
+        "model": model
+    })
+
+    if generated_text:
+        generated_text_dict = extract_json_string(generated_text)
+        selected_mcq_num = generated_text_dict.get("best_question", {}).get("question_number")
+        try:
+            selected_mcq_num_int = int(selected_mcq_num)
+        except (TypeError, ValueError):
+            logger.warning("The selected MCQ number is not valid. Defaulting to 0.")
+            return 0
         
-        if mcq_metadata:
-            mcq = mcq_metadata["mcq"]
-            mcq_answer = mcq_metadata["mcq_answer"]
-            candidate_questions.append({"question_number": i+1, 
-                                        "question": mcq,
-                                        "answer": mcq_answer})
+        if not (0 <= selected_mcq_num_int < len(candidate_questions)):
+            logger.warning("The selected MCQ number is out of the allowed range. Defaulting to 0.")
+            return 0
 
+        selected_mcq = candidate_questions[selected_mcq_num_int]["question"] 
+        selected_mcq_answer = candidate_questions[selected_mcq_num_int]["answer"]
 
-    pass
+        ranking_metadata.update({
+            "completion": generated_text,
+            "selected_mcq": selected_mcq,
+            "selected_mcq_answer": selected_mcq_answer
+        })
+    else:
+        logger.warning("Failed to generate a ranking.")
+        if candidate_questions:
+            selected_mcq = candidate_questions[0]["question"]
+            selected_mcq_answer = candidate_questions[0]["answer"]
+
+        ranking_metadata.update({
+            "completion": "No ranking generated due to failed generation. Choose the first candidate question instead.",
+            "selected_mcq": selected_mcq,
+            "selected_mcq_answer": selected_mcq_answer
+        })
+
+    # Insert the metadata into the database
+    insert_metadata(ranking_metadata, ranking_table_name, database_file)
+
+    return ranking_metadata
 
 async def extract_answer_with_agent(generated_text: str) -> str:
     """Extract the answer from the generated text using an agent."""
@@ -232,7 +348,28 @@ async def generate_all_mcqs(task_list: list,
                             model: str, 
                             table_name: str="mcq_metadata", 
                             database_file: str ="../database/mcq_metadata.db",
-                            max_attempt: int=3):
+                            max_attempt: int=3) -> list:
+    tasks = [
+        generate_mcq(
+            invocation_id=invocation_id,
+            model=model,
+            task=task,
+            table_name=table_name,
+            database_file=database_file,
+            max_attempt=max_attempt,
+        )
+        for task in task_list
+    ]
+    questions = await asyncio.gather(*tasks)
+    return questions
+
+
+async def generate_all_mcqs_quality_first(task_list: list, 
+                            invocation_id: str, 
+                            model: str, 
+                            table_name: str="mcq_metadata", 
+                            database_file: str ="../database/mcq_metadata.db",
+                            max_attempt: int=3) -> list:
     tasks = [
         generate_mcq(
             invocation_id=invocation_id,

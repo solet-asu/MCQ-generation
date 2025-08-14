@@ -11,7 +11,7 @@ system_prompt: |
   
   [GUIDELINES]
   Step1: Understand the definition of the type of question you are evaluating (factual, inferential, or main idea).
-   **Factual Question**: Requires recall of specific facts or details that is explicitly stated in the source text. 
+   **Fact Question**: Requires recall of specific facts or details that is explicitly stated in the source text. 
     Example: 
     What methods does ethnoarchaeology utilize to study past human cultures?
     A) Linguistic and biological methods
@@ -19,7 +19,7 @@ system_prompt: |
     C) Historical and literary methods
     D) Archaeological and ethnographic methods
 
-    **Inferential Question**: Requires the student to go beyond what is directly stated in the text and draw a logical conclusion using textual evidence, reasoning, and sometimes prior knowledge. The answer is *implied*, not stated explicitly.
+    **Inference Question**: Requires the student to go beyond what is directly stated in the text and draw a logical conclusion using textual evidence, reasoning, and sometimes prior knowledge. The answer is *implied*, not stated explicitly.
     Example:
     How did Franz Boas's approach in anthropology challenge established scientific theories of his time?
     A) By focusing exclusively on biological differences between ethnic groups.
@@ -66,15 +66,19 @@ system_prompt: |
 
 
 user_prompt: |
-  Here is the {question_type} the candidate questions are addressing:
-  {fact_or_inference_or_main_idea}
+  The questions you are evaluating are {question_type} questions.
 
-  Here is the source text for the {question_type}:
+  Here is the source text for the candidate {question_type} questions:
   <source_text>
   {text}   
   </source_text>
 
-  Here is the list of candidate questions:
+  Here is the contextual text for the source text:
+  <contextual_text>
+  {context}
+  </contextual_text>
+
+  Here is the list of candidate {question_type} questions:
   <candidate_questions>
   {candidate_questions}
   </candidate_questions>
