@@ -7,3 +7,4 @@ class MCQRequest(BaseModel):
     fact: int
     inference: int
     main_idea: int
+    quality_first: bool = False

@@ -1,6 +1,6 @@
 import re
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, Any, List, Mapping, Sequence
 from src.prompt_fetch import get_prompts
 from src.agent import Agent
 from src.general import *
@@ -35,13 +35,14 @@ def extract_output(input_str: str, item: str = "QUESTION") -> Optional[str]:
 async def generate_mcq(invocation_id: str, 
                       model: str, 
                       task: Dict, 
-                      table_name: str = "mcq_metadata", 
+                      mcq_metadata_table_name: str = "mcq_metadata", 
+                      evaluation_metadata_table_name: str = "evaluation_metadata",
                       database_file: str = '../database/mcq_metadata.db',
                       max_attempt: int = 3,
                       attempt: int = 1) -> Dict:
     """Generate a multiple-choice question (MCQ) and store metadata."""
     
-    create_table(table_name, database_file)
+    create_table(mcq_metadata_table_name, database_file)
 
     question_type = task.get("question_type", "").lower()
     chunk = json.dumps(task.get("chunk", []))
@@ -106,7 +107,7 @@ async def generate_mcq(invocation_id: str,
             logger.warning("Max generation tries (3) reached. Setting default failure values.")
             mcq_metadata["mcq"] = "No MCQ generated due to missing options."
             mcq_metadata["mcq_answer"] = "No answer generated due to missing options."
-            insert_metadata(mcq_metadata, table_name, database_file)
+            insert_metadata(mcq_metadata, mcq_metadata_table_name, database_file)
             return mcq_metadata
 
     # If a valid question is generated, proceed to extract answer
@@ -126,7 +127,7 @@ async def generate_mcq(invocation_id: str,
             model=model,
             mcq_metadata=mcq_metadata,
             task=task,
-            table_name="evaluation_metadata",
+            table_name=evaluation_metadata_table_name,
             database_file=database_file
         )
         if evaluation_meta:
@@ -164,7 +165,7 @@ async def generate_mcq(invocation_id: str,
                             invocation_id=invocation_id,
                             model=model,
                             task=task,
-                            table_name=table_name,
+                            table_name=mcq_metadata_table_name,
                             database_file=database_file,
                             max_attempt=max_attempt,
                             attempt=attempt + 1
@@ -174,7 +175,7 @@ async def generate_mcq(invocation_id: str,
                         mcq_metadata["mcq"] = "No MCQ generated due to evaluation failure."
                         mcq_metadata["mcq_answer"] = "No answer generated due to evaluation failure."
 
-        insert_metadata(mcq_metadata, table_name, database_file)
+        insert_metadata(mcq_metadata, mcq_metadata_table_name, database_file)
         
     return mcq_metadata
 
@@ -183,16 +184,17 @@ async def generate_candidate_mcqs_async(
     invocation_id: str,
     model: str,
     task: Dict,
-    mcq_table_name: str,
-    database_file: str,
-    max_attempt: int,
-    attempt: int
+    mcq_table_name: str= "mcq_metadata",
+    evaluation_table_name: str = "evaluation_metadata",
+    database_file: str = '../database/mcq_metadata.db',
+    max_attempt: int = 3,
+    attempt: int = 1
 ) -> Dict:
     """
     Asynchronously generate a single MCQ.
     """
     try:
-        mcq_metadata = await generate_mcq(invocation_id, model, task, mcq_table_name, database_file, max_attempt, attempt)
+        mcq_metadata = await generate_mcq(invocation_id, model, task, mcq_table_name, evaluation_table_name, database_file, max_attempt, attempt)
         return mcq_metadata
     except Exception as e:
         logger.error(f"Error generating MCQ: {e}")
@@ -202,8 +204,9 @@ async def generate_mcq_quality_first(
     invocation_id: str,
     model: str,
     task: Dict,
-    mcq_table_name: str = "mcq_metadata",
-    ranking_table_name: str = "ranking_metadata",
+    mcq_metadata_table_name: str = "mcq_metadata",
+    evaluation_metadata_table_name: str = "evaluation_metadata",
+    ranking_metadata_table_name: str = "ranking_metadata",
     database_file: str = '../database/mcq_metadata.db',
     max_attempt: int = 3,
     attempt: int = 1,
@@ -227,12 +230,11 @@ async def generate_mcq_quality_first(
         Dict: Metadata of the ranking process.
     """
     # Create tables for storing metadata
-    create_table(mcq_table_name, database_file)
-    create_table(ranking_table_name, database_file)
+    create_table(ranking_metadata_table_name, database_file)
 
     # Generate multiple candidate questions concurrently
     tasks = [
-        generate_candidate_mcqs_async(invocation_id, model, task, mcq_table_name, database_file, max_attempt, attempt)
+        generate_candidate_mcqs_async(invocation_id, model, task, mcq_metadata_table_name, evaluation_metadata_table_name, database_file, max_attempt, attempt)
         for _ in range(candidate_num)
     ]
     candidate_questions_metadata = await asyncio.gather(*tasks)
@@ -299,8 +301,8 @@ async def generate_mcq_quality_first(
 
         ranking_metadata.update({
             "completion": generated_text,
-            "selected_mcq": selected_mcq,
-            "selected_mcq_answer": selected_mcq_answer
+            "mcq": selected_mcq,
+            "mcq_answer": selected_mcq_answer
         })
     else:
         logger.warning("Failed to generate a ranking.")
@@ -310,12 +312,12 @@ async def generate_mcq_quality_first(
 
         ranking_metadata.update({
             "completion": "No ranking generated due to failed generation. Choose the first candidate question instead.",
-            "selected_mcq": selected_mcq,
-            "selected_mcq_answer": selected_mcq_answer
+            "mcq": selected_mcq,
+            "mcq_answer": selected_mcq_answer
         })
 
     # Insert the metadata into the database
-    insert_metadata(ranking_metadata, ranking_table_name, database_file)
+    insert_metadata(ranking_metadata, ranking_metadata_table_name, database_file)
 
     return ranking_metadata
 
@@ -343,43 +345,66 @@ async def extract_mcq_with_agent(generated_text: str) -> str:
     return result or "Sorry, We couldn't generate a multiple-choice question for you."
 
 
-async def generate_all_mcqs(task_list: list, 
-                            invocation_id: str, 
-                            model: str, 
-                            table_name: str="mcq_metadata", 
-                            database_file: str ="../database/mcq_metadata.db",
-                            max_attempt: int=3) -> list:
-    tasks = [
-        generate_mcq(
-            invocation_id=invocation_id,
-            model=model,
-            task=task,
-            table_name=table_name,
-            database_file=database_file,
-            max_attempt=max_attempt,
-        )
-        for task in task_list
-    ]
-    questions = await asyncio.gather(*tasks)
-    return questions
+async def generate_all_mcqs(
+    task_list: Sequence[Mapping[str, Any]],
+    invocation_id: str,
+    *,
+    model: str,
+    mcq_metadata_table_name: str = "mcq_metadata",
+    evaluation_metadata_table_name: str = "evaluation_metadata",
+    database_file: str = "../database/mcq_metadata.db",
+    max_attempt: int = 3,
+    concurrency: int = 30,  # NEW
+) -> List[Dict[str, Any]]:
+    sem = asyncio.Semaphore(max(1, concurrency))
+
+    async def _run(task: Mapping[str, Any]) -> Dict[str, Any]:
+        async with sem:
+            return await generate_mcq(
+                invocation_id=invocation_id,
+                model=model,
+                task=task,
+                mcq_metadata_table_name=mcq_metadata_table_name,
+                evaluation_metadata_table_name=evaluation_metadata_table_name,
+                database_file=database_file,
+                max_attempt=max_attempt,
+            )
+
+    # Let failures be isolated; filter out Nones if you add try/except
+    results = await asyncio.gather(*(_run(t) for t in task_list), return_exceptions=False)
+    return list(results)
 
 
-async def generate_all_mcqs_quality_first(task_list: list, 
-                            invocation_id: str, 
-                            model: str, 
-                            table_name: str="mcq_metadata", 
-                            database_file: str ="../database/mcq_metadata.db",
-                            max_attempt: int=3) -> list:
-    tasks = [
-        generate_mcq(
-            invocation_id=invocation_id,
-            model=model,
-            task=task,
-            table_name=table_name,
-            database_file=database_file,
-            max_attempt=max_attempt,
-        )
-        for task in task_list
-    ]
-    questions = await asyncio.gather(*tasks)
-    return questions
+async def generate_all_mcqs_quality_first(
+    task_list: Sequence[Mapping[str, Any]],
+    invocation_id: str,
+    *,
+    model: str,
+    mcq_metadata_table_name: str = "mcq_metadata",
+    evaluation_metadata_table_name: str = "evaluation_metadata",
+    ranking_metadata_table_name: str = "ranking_metadata",
+    database_file: str = "../database/mcq_metadata.db",
+    max_attempt: int = 3,
+    attempt: int = 1,
+    candidate_num: int = 5,
+    concurrency: int = 30,  # NEW
+) -> List[Dict[str, Any]]:
+    sem = asyncio.Semaphore(max(1, concurrency))
+
+    async def _run(task: Mapping[str, Any]) -> Dict[str, Any]:
+        async with sem:
+            return await generate_mcq_quality_first(
+                invocation_id=invocation_id,
+                model=model,
+                task=task,
+                mcq_metadata_table_name=mcq_metadata_table_name,
+                evaluation_metadata_table_name=evaluation_metadata_table_name,
+                ranking_metadata_table_name=ranking_metadata_table_name,
+                database_file=database_file,
+                max_attempt=max_attempt,
+                attempt=attempt,
+                candidate_num=candidate_num,
+            )
+
+    results = await asyncio.gather(*(_run(t) for t in task_list), return_exceptions=False)
+    return list(results)
