@@ -120,6 +120,17 @@
             border: 1px solid #ccc;
             cursor: pointer;
         }
+        .quality-toggle {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            }
+            .quality-toggle label {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            cursor: pointer;
+            }
     </style>
 </head>
 <body>
@@ -133,6 +144,18 @@
         </div>
 
         <div class="options">
+            <h2>Quality First?</h2>
+                <div class="quality-toggle">
+                <label>
+                    <input type="radio" name="quality_first" value="no" checked>
+                    No (faster)
+                </label>
+                <label>
+                    <input type="radio" name="quality_first" value="yes">
+                    Yes (higher quality)
+                </label>
+                </div>
+
             <h2>Specify the number of different types of questions you want to generate:</h2>
 
             <label>Factual Questions:
@@ -180,6 +203,9 @@
             const inference = document.getElementById('inference').value;
             const mainIdea = document.getElementById('main_idea').value;
 
+            const qualityFirst =
+                document.querySelector('input[name="quality_first"]:checked')?.value === 'yes';
+
             const questionsContainer = document.getElementById('questions-container');
             const spinner = document.getElementById('spinner');
 
@@ -198,7 +224,8 @@
                         text: text,
                         fact: parseInt(fact),
                         inference: parseInt(inference),
-                        main_idea: parseInt(mainIdea)
+                        main_idea: parseInt(mainIdea),
+                        quality_first: qualityFirst
                     })
                 });
 

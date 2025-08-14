@@ -1,116 +1,146 @@
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import time
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List
+
 from src.text_processing import add_chunk_markers
 from src.planner import generate_plan
 from src.controller_helper import create_task_list
-from src.mcq_generation import generate_all_mcqs
-from src.formatter import reformat_mcq_metadata, reformat_mcq_metadata_without_shuffling
+from src.mcq_generation import generate_all_mcqs, generate_all_mcqs_quality_first
+from src.formatter import reformat_mcq_metadata_without_shuffling
 from src.database_handler import create_table, insert_metadata
-import uuid
-from datetime import datetime
-import logging
-import json
 
-async def question_generation_workflow(text:str, 
-                                       fact:int, 
-                                       inference:int, 
-                                       main_idea:int, 
-                                       model:str,  
-                                       table_name: str = "workflow_metadata", 
-                                       database_file: str ="../database/mcq_metadata.db") -> list[dict[str, str]]:
+logger = logging.getLogger(__name__)
+
+
+async def question_generation_workflow(
+    text: str,
+    *,
+    fact: int,
+    inference: int,
+    main_idea: int,
+    model: str,
+    quality_first: bool = False,
+    candidate_num: int = 5,  # used only when quality_first=True
+    max_attempt_for_single_mcq: int = 3,
+    plan_metadata_table_name: str = "plan_metadata",
+    mcq_metadata_table_name: str = "mcq_metadata",
+    evaluation_metadata_table_name: str = "evaluation_metadata",
+    ranking_metadata_table_name: str = "ranking_metadata",
+    workflow_metadata_table_name: str = "workflow_metadata",
+    database_file: str = "../database/mcq_metadata.db",
+    concurrency: int = 30, # Max concurrent tasks for question generation
+) -> list[dict[str, Any]]:
     """
-    Main function to generate questions based on the provided text and parameters.
-    
-    :param text: The raw text to be processed.
-    :param fact: The number of fact-based questions to generate.
-    :param inference: The number of inference-based questions to generate.
-    :param main_idea: The number of main idea questions to generate.
-    :return: A list of dictionaries containing the generated Multiple choice questions and their answers. For example:
-       [
-        {
-            "question_type": "facts",
-            "question": "What is author of the book?",
-            "answer": "B"
-        }
-        {
-            "question_type": "inferences",
-            "question": "What can you infer from the text?",
-            "answer": "D"
-        }
-       ] 
+    Generate MCQs from `text` given desired counts per question type.
 
-
+    Returns:
+        A list of MCQ dicts (question, answer, type, and token metrics).
+    Raises:
+        ValueError: on invalid counts or candidate_num.
     """
-    
-    # Record the start time of the workflow
-    start_time = datetime.now()
-    logging.info(f"Workflow started at: {start_time}")
+    # ---- validation ----
+    if not text or not text.strip():
+        logger.warning("Empty text provided to question_generation_workflow")
+        return []
+    if any(n < 0 for n in (fact, inference, main_idea)):
+        raise ValueError("Counts for fact, inference, and main_idea must be non-negative.")
+    if quality_first and candidate_num <= 0:
+        raise ValueError("candidate_num must be > 0 when quality_first=True.")
 
-    # Generate a unique invocation ID for this workflow run
     invocation_id = str(uuid.uuid4())
-    logging.info(f"Invocation ID: {invocation_id}")
-    
-    # Step 1: text preprocessing 
+    log_extra = {"invocation_id": invocation_id}
+
+    # timing & timestamps
+    t0 = time.perf_counter()
+    start_ts = datetime.now(timezone.utc).isoformat()
+
+    logger.info("Workflow started", extra=log_extra)
+
+    # Normalize DB path early (some libs dislike Path objects)
+    db_path = str(Path(database_file))
+
+    # ---- Step 1: text preprocessing ----
     chunked_text = add_chunk_markers(text)
-    logging.info(f"Text is now successfully chunked into smaller parts.")
-    
-    # Step 2: make a plan
+    logger.info("Text successfully chunked", extra=log_extra)
+
+    # ---- Step 2: plan generation ----
     plan = await generate_plan(
         invocation_id=invocation_id,
-        model= model,
-        text =chunked_text,
-        fact = fact,   
-        inference = inference, 
-        table_name="plan_metadata", 
-        database_file='../database/mcq_metadata.db')
-    
-    logging.info(f"Plan generated successfully.")
+        model=model,
+        text=chunked_text,
+        fact=fact,
+        inference=inference,
+        table_name=plan_metadata_table_name,
+        database_file=db_path,
+    )
+    logger.info("Plan generated", extra=log_extra)
 
-    
-    # Step 3: parse the plan and make a task list
+    # ---- Step 3: tasks ----
     task_list = create_task_list(chunked_text, plan, fact, inference, main_idea)
-    logging.info(f"Task list created successfully.")
+    logger.info("Task list created (n=%d)", len(task_list), extra=log_extra)
+    if not task_list:
+        logger.warning("Empty task list; nothing to generate", extra=log_extra)
+        return []
 
-    # Step 4: generate questions
-    questions_list = await generate_all_mcqs(
-                    task_list, 
-                    invocation_id, 
-                    model=model, 
-                    table_name="mcq_metadata", 
-                    database_file="../database/mcq_metadata.db",
-                    max_attempt=3)
-    logging.info(f"Questions generated successfully.")
-    
+    # ---- Step 4: question generation ----
+    if quality_first:
+        questions_list = await generate_all_mcqs_quality_first(
+            task_list=task_list,
+            invocation_id=invocation_id,
+            model=model,
+            mcq_metadata_table_name=mcq_metadata_table_name,
+            evaluation_metadata_table_name=evaluation_metadata_table_name,
+            ranking_metadata_table_name=ranking_metadata_table_name,
+            database_file=db_path,
+            max_attempt=max_attempt_for_single_mcq,
+            candidate_num=candidate_num,
+            concurrency=concurrency, 
+        )
+    else:
+        questions_list = await generate_all_mcqs(
+            task_list=task_list,
+            invocation_id=invocation_id,
+            model=model,
+            mcq_metadata_table_name=mcq_metadata_table_name,
+            evaluation_metadata_table_name=evaluation_metadata_table_name,
+            database_file=db_path,
+            max_attempt=max_attempt_for_single_mcq,
+            concurrency=concurrency,
+        )
+    logger.info("Questions generated (n=%d)", len(questions_list), extra=log_extra)
 
+    # ---- Step 5: order & reformat ----
+    reformatted_questions: List[Dict[str, Any]] = reformat_mcq_metadata_without_shuffling(questions_list)
+    logger.info("Questions reformatted", extra=log_extra)
 
-    # Step 5: order and reformat the questions
-    reformatted_questions = reformat_mcq_metadata_without_shuffling(questions_list)
-    logging.info(f"Questions reformatted successfully.")
-    
-    # Step 6: store the data in a new table "mcq_formatted_metadata"  
-    # Record the end time of the workflow
-    end_time = datetime.now()
-    execution_time = end_time - start_time
+    # ---- Step 6: persist workflow metadata ----
+    # Compute token totals defensively (values may be str/None/int)
+    total_input_tokens = sum(int(item.get("input_tokens") or 0) for item in reformatted_questions)
+    total_output_tokens = sum(int(item.get("output_tokens") or 0) for item in reformatted_questions)
 
-    # calculate the total tokens used
-    # Calculate total input_tokens and output_tokens
-    total_input_tokens = sum(item.get('input_tokens', 0) for item in reformatted_questions)
-    total_output_tokens = sum(item.get('output_tokens', 0) for item in reformatted_questions)
+    end_ts = datetime.now(timezone.utc).isoformat()
+    elapsed = time.perf_counter() - t0
 
-    # create a workflow metadata dictionary
     workflow_metadata = {
         "invocation_id": invocation_id,
-        "output": json.dumps(reformatted_questions),
-        "execution_time": str(execution_time),
+        "output": json.dumps(reformatted_questions, ensure_ascii=False),
+        "execution_time_seconds": f"{elapsed:.6f}",
         "input_tokens": total_input_tokens,
         "output_tokens": total_output_tokens,
-        "timestamp": str(datetime.now())
+        "timestamp_start": start_ts,
+        "timestamp_end": end_ts,
     }
-    # Create the table for workflow metadata
-    create_table(table_name, database_file)
-    # Insert the workflow metadata into the database
-    insert_metadata(workflow_metadata, table_name, database_file)
-    logging.info(f"Workflow metadata stored successfully.")
+
+    # Run blocking DB operations off the event loop
+    await asyncio.to_thread(create_table, workflow_metadata_table_name, db_path)
+    await asyncio.to_thread(insert_metadata, workflow_metadata, workflow_metadata_table_name, db_path)
+    logger.info("Workflow metadata stored", extra=log_extra)
 
     return reformatted_questions
-    
-
-

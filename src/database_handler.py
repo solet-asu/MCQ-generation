@@ -2,9 +2,13 @@ import sqlite3
 import csv
 import os
 import sqlite3
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union
 from datetime import datetime 
 import logging
+
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 from models.table_schema import TABLE_SCHEMAS
 
@@ -17,42 +21,48 @@ def table_exists(table_name: str, database_file: str) -> bool:
         ''', (table_name,))
         return cursor.fetchone() is not None
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
+def create_table(table_name: Union[str, List[str]], database_file: str) -> None:
+    """Create one or more tables with the given schema(s) if they don't exist."""
+    
+    # Ensure input is a list of strings
+    table_names = [table_name] if isinstance(table_name, str) else table_name
 
-def create_table(table_name: str, database_file: str) -> None:
-    """Create a table with the given schema if it doesn't exist."""
-    try:
-        # Check if the table schema exists
-        if table_name not in TABLE_SCHEMAS:
-            logging.error(f"Table schema for '{table_name}' not found.")
-            return
+    for name in table_names:
+        try:
+            # Check if the table schema exists
+            if name not in TABLE_SCHEMAS:
+                logging.error(f"Table schema for '{name}' not found.")
+                continue
 
-        # Get the schema for the specified table
-        schema = TABLE_SCHEMAS[table_name]
-        columns = ", ".join([f"{col} {dtype}" for col, dtype in schema.items()])
+            # Check if the table already exists
+            if table_exists(name, database_file):
+                logging.info(f"Table '{name}' already exists.")
+                continue
 
-        # Connect to the database and create the table
-        with sqlite3.connect(database_file) as conn:
-            cursor = conn.cursor()
-            cursor.execute(f'''
-                CREATE TABLE IF NOT EXISTS {table_name} (
-                    {columns}
-                )
-            ''')
-            conn.commit()
-            logging.info(f"Table '{table_name}' created or already exists.")
-    except sqlite3.Error as e:
-        logging.error(f"Error creating table '{table_name}': {e}")
+            # Get schema and create the table
+            schema = TABLE_SCHEMAS[name]
+            columns = ", ".join([f"{col} {dtype}" for col, dtype in schema.items()])
+
+            with sqlite3.connect(database_file) as conn:
+                cursor = conn.cursor()
+                cursor.execute(f'''
+                    CREATE TABLE {name} (
+                        {columns}
+                    )
+                ''')
+                conn.commit()
+                logging.info(f"Table '{name}' created successfully.")
+        except sqlite3.Error as e:
+            logging.error(f"Error creating table '{name}': {e}")
         
 
 def insert_metadata(
     metadata: Dict[str, Any],
     table_name: str,
     database_file: str,
-) -> None:
+    ) -> None:
     """Insert metadata into a table dynamically."""
     try:
         schema = TABLE_SCHEMAS[table_name]

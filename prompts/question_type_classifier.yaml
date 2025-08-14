@@ -54,6 +54,12 @@ system_prompt: |
     C) To examine acephalous societies and how they challenge the Western notions of leadership and democracy through consensus and egalitarian practices.
     D) To describe how acephalous societies avoid decision-making conflicts by appointing strong leaders.
 
+   **IMPORTANT** How to distinguish between a factual question and an inferential question? 
+   - Definition. Factual questions ask about explicitly stated information in the text while inferential questions ask about information that is implied or must be reasoned out.
+   - Answer Location. The answer to a factual question can be directly found in the text while the answer to an inferential question is not directly stated and must be inferred.
+   - Cognitive Demand. Factual questions assess recall or recognition skills while inferential questions require interpretation, reasoning, or connecting ideas.  
+
+
   [OUTPUT FORMAT]:
   Output your classification using the following JSON format:
   {

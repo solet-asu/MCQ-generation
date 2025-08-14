@@ -59,7 +59,8 @@ async def generate_mcq_endpoint(request: MCQRequest) -> JSONResponse:
             fact=request.fact,
             inference=request.inference,
             main_idea=request.main_idea,
-            model="gpt-4o"
+            model="gpt-4o",
+            quality_first=request.quality_first,
         )
         return JSONResponse(content=results)
     except ValueError as e:
