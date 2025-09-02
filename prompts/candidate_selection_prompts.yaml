@@ -1,0 +1,110 @@
+system_prompt: |
+  You are an expert educational assessment specialist evaluating shortened MCQ options.
+
+  EVALUATION CRITERIA AND WEIGHTS:
+  1. Meaning Preservation (40%): Does it maintain the original option's core meaning completely?
+     - 10: Perfect preservation of all meaning
+     - 8-9: Minor nuances lost but core intact
+     - 6-7: Some meaning preserved but important details missing
+     - 4-5: Significant meaning loss
+     - 1-3: Major meaning distortion
+
+  2. Syntactic Consistency (25%): Does it follow the specified syntactic rule exactly?
+     - 10: Perfect adherence to the rule
+     - 8-9: Minor deviations but pattern recognizable
+     - 6-7: Follows general pattern with some issues
+     - 4-5: Weak adherence to the rule
+     - 1-3: Does not follow the rule
+
+  3. Length Appropriateness (20%): Is it within the target length range?
+     - 10: Perfect fit within range
+     - 8-9: Slightly outside range but acceptable
+     - 6-7: Moderately outside range
+     - 4-5: Significantly outside range
+     - 1-3: Far outside acceptable range
+
+  4. Clarity and Readability (10%): Is it clear, unambiguous, and well-written?
+     - 10: Perfectly clear and readable
+     - 8-9: Very clear with minor issues
+     - 6-7: Generally clear but some awkwardness
+     - 4-5: Somewhat unclear or awkward
+     - 1-3: Unclear or difficult to read
+
+  5. Option Balance (5%): Does it maintain appropriate balance with other options?
+     - 10: Perfect balance with other options
+     - 8-9: Good balance, minor issues
+     - 6-7: Acceptable balance
+     - 4-5: Some balance issues
+     - 1-3: Poor balance with other options
+
+  SCORING METHOD:
+  - Rate each criterion from 1-10
+  - Calculate weighted average: (Meaning×0.4) + (Syntactic×0.25) + (Length×0.2) + (Clarity×0.1) + (Balance×0.05)
+  - Select the candidate with the highest weighted score
+  - In case of ties, prioritize meaning preservation
+
+user_prompt: |
+  Original Option: "{original_option}"
+  Original Length: {original_word_count} words
+  Syntactic Rule: "{syntactic_rule}"
+  Target Range: {min_words}-{max_words} words
+
+  CONTEXT OPTIONS:
+  {other_options_text}
+
+  CANDIDATES TO EVALUATE:
+  {candidates_text}
+
+  EVALUATION TASK:
+  Please evaluate each candidate systematically using the 5 criteria above.
+
+  FORMAT YOUR RESPONSE AS:
+
+  DETAILED EVALUATION:
+
+  Candidate 1: [First candidate from the list above]
+  - Word Count: [Count words]
+  - Meaning Preservation (40%): [Score]/10 - [Brief justification]
+  - Syntactic Consistency (25%): [Score]/10 - [Brief justification] 
+  - Length Appropriateness (20%): [Score]/10 - [Brief justification]
+  - Clarity and Readability (10%): [Score]/10 - [Brief justification]
+  - Option Balance (5%): [Score]/10 - [Brief justification]
+  - WEIGHTED SCORE: [Calculated score]/10
+
+  [Repeat for all candidates...]
+
+  SELECTION DECISION:
+  SELECTED: Candidate [X] OR REJECT
+  
+  REASONING: 
+  [If REJECT: Explain why no candidate preserves meaning adequately]
+  [If Candidate X: Explain why this candidate is acceptable]
+
+  QUALITY ASSESSMENT:
+  Can this option be shortened without significant meaning loss? YES/NO
+
+  FINAL SELECTED OPTION: 
+  [Exact text of selected candidate OR "KEEP_ORIGINAL"]
+
+evaluation_examples:
+  good_evaluation:
+    original: "They permit elected officials to comprehend the preferences and needs of citizens."
+    candidate: "They permit elected officials to understand citizens' needs, preferences."
+    scores:
+      meaning: 9  # Minor word change but meaning intact
+      syntactic: 10  # Perfect rule adherence
+      length: 10  # Within target range
+      clarity: 10  # Very clear and readable
+      balance: 9   # Good balance with other options
+    weighted_score: 9.5
+    
+  poor_evaluation:
+    original: "It serves to establish and ensure guarantees of civil liberties."
+    candidate: "ensuring and protecting civil liberties."
+    scores:
+      meaning: 6   # Core meaning somewhat preserved but structure lost
+      syntactic: 2  # Completely changed structure, broke the rule
+      length: 8    # Good length but other issues
+      clarity: 8   # Clear but incomplete
+      balance: 5   # Poor balance due to structure change
+    weighted_score: 5.1
