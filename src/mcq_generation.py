@@ -1,6 +1,7 @@
 import re
 import logging
 from typing import Dict, Optional, Any, List, Mapping, Sequence
+from collections import defaultdict
 from src.prompt_fetch import get_prompts
 from src.agent import Agent
 from src.general import *
@@ -19,9 +20,10 @@ QUESTION_TYPE_PROMPT_MAP = {
     "main_idea": "main_idea_prompts.yaml",
 }
 
+
 def extract_output(input_str: str, item: str = "QUESTION") -> Optional[str]:
-    """Extract content between specified tags from the input string."""
-    pattern = re.compile(rf"<{item}>(.*?)</?{item}>", re.DOTALL)
+    """Extract content between <ITEM>...</ITEM> tags robustly."""
+    pattern = re.compile(rf"<{item}\b[^>]*>(.*?)</{item}\s*>", re.DOTALL | re.IGNORECASE)
     match = pattern.search(input_str)
     if match:
         target_str = match.group(1).strip()
@@ -32,39 +34,75 @@ def extract_output(input_str: str, item: str = "QUESTION") -> Optional[str]:
         return None
 
 
-async def generate_mcq(invocation_id: str, 
-                      model: str, 
-                      task: Dict, 
-                      mcq_metadata_table_name: str = "mcq_metadata", 
-                      evaluation_metadata_table_name: str = "evaluation_metadata",
-                      database_file: str = '../database/mcq_metadata.db',
-                      max_attempt: int = 3,
-                      attempt: int = 1) -> Dict:
+def _has_all_four_options(mcq_text: str) -> bool:
+    """
+    Validate that MCQ contains options A), B), C), and D) at line starts.
+    """
+    letters = set(re.findall(r'^([A-D])\)\s+', mcq_text, flags=re.MULTILINE | re.IGNORECASE))
+    return {'A', 'B', 'C', 'D'}.issubset({l.upper() for l in letters})
+
+
+def _normalize_answer(ans: str) -> str:
+    """Normalize answer strings like 'b', 'B)', 'Choice B' to single letter A-D."""
+    if not isinstance(ans, str):
+        return "N/A"
+    m = re.search(r'([A-D])', ans.upper())
+    return m.group(1) if m else ans.strip()
+
+
+async def generate_mcq(
+    invocation_id: str,
+    model: str,
+    task: Dict,
+    mcq_metadata_table_name: str = "mcq_metadata",
+    evaluation_metadata_table_name: str = "evaluation_metadata",
+    database_file: str = '../database/mcq_metadata.db',
+    max_attempt: int = 3,
+    attempt: int = 1
+) -> Dict:
     """Generate a multiple-choice question (MCQ) and store metadata."""
-    
+
     create_table(mcq_metadata_table_name, database_file)
 
     question_type = task.get("question_type", "").lower()
-    chunk = json.dumps(task.get("chunk", []))
+    # Safe JSON dump in case chunk has non-serializable objects
+    try:
+        chunk = json.dumps(task.get("chunk", []), default=str)
+    except Exception as e:
+        logger.warning("Failed to JSON-serialize 'chunk': %s. Falling back to str(...).", e)
+        chunk = str(task.get("chunk", []))
+
     prompt_file = QUESTION_TYPE_PROMPT_MAP.get(question_type)
     if prompt_file is None:
         raise ValueError(f"Invalid question type: {question_type}.")
 
-    prompts = get_prompts(prompt_file)
+    # Load prompts defensively
+    try:
+        prompts = get_prompts(prompt_file)
+    except Exception as e:
+        logger.error("Prompt load failed for %s: %s", prompt_file, e)
+        prompts = {"system_prompt": "", "user_prompt": ""}
+
     text = task.get("text", "")
     system_prompt = prompts.get("system_prompt", "")
-    user_prompt = prompts.get("user_prompt", "").format(
-        content=task.get("content", ""),
-        text=text,
-        context=task.get("context", "")
-    )
+    # Safe templating (avoid KeyError on missing keys)
+    user_prompt = prompts.get("user_prompt", "").format_map(defaultdict(str, {
+        "content": task.get("content", ""),
+        "text": text,
+        "context": task.get("context", ""),
+    }))
 
     # Add revision information if this isn't the first attempt
     if attempt > 1:
         previous_mcq = task.get("previous_mcq", "No previous MCQ")
         previous_answer = task.get("previous_answer", "No previous answer")
         evaluation_reasoning = task.get("evaluation_reasoning", "No reasoning")
-        user_prompt += f"\n\nRevise your generated multiple-choice question.\n\nPrevious MCQ:\n{previous_mcq}\n\nPrevious Answer:\n{previous_answer}\n\nEvaluation Reasoning:\n{evaluation_reasoning}"
+        user_prompt += (
+            f"\n\nRevise your generated multiple-choice question.\n\n"
+            f"Previous MCQ:\n{previous_mcq}\n\n"
+            f"Previous Answer:\n{previous_answer}\n\n"
+            f"Evaluation Reasoning:\n{evaluation_reasoning}"
+        )
 
     question_generation_agent = Agent(
         model=model,
@@ -74,6 +112,10 @@ async def generate_mcq(invocation_id: str,
 
     # Retry logic for generating a question with valid options (max 3 attempts)
     max_generation_tries = 3
+    used_mcq_extractor = False
+    mcq_metadata: Dict[str, Any] = {}
+    generated_text: Optional[str] = None
+
     for generation_try in range(1, max_generation_tries + 1):
         generated_text = await question_generation_agent.completion_generation()
         mcq_metadata = question_generation_agent.get_metadata()
@@ -90,15 +132,21 @@ async def generate_mcq(invocation_id: str,
                 logger.info(f"MCQ extracted on try {generation_try}.")
                 mcq_metadata["mcq"] = mcq_extracted
                 # Check for valid options (A-D)
-                if re.search(r'\b[A-D]\)', mcq_extracted):
+                if _has_all_four_options(mcq_extracted):
                     logger.info(f"Valid MCQ generated on try {generation_try}.")
                     break  # Exit the retry loop if valid options are found
                 else:
-                    logger.error(f"Generated question lacks valid options (try {generation_try}): {mcq_extracted}")
+                    logger.error(
+                        f"Generated question lacks valid options (try {generation_try}): {mcq_extracted}"
+                    )
             else:
                 logger.warning(f"Falling back to MCQ agent (try {generation_try}).")
-                mcq_metadata["mcq"] = await extract_mcq_with_agent(generated_text)
-                # Assume agent produces a valid question
+                mcq_metadata["mcq"] = await extract_mcq_with_agent(generated_text, model=model)
+                used_mcq_extractor = True
+                # Validate again after extractor
+                if not _has_all_four_options(mcq_metadata["mcq"]):
+                    logger.error("MCQ extractor did not produce all four options A-D; continuing retries.")
+                    continue
                 break
         else:
             logger.error(f"Failed to generate text on try {generation_try}.")
@@ -112,15 +160,23 @@ async def generate_mcq(invocation_id: str,
 
     # If a valid question is generated, proceed to extract answer
     if "mcq" in mcq_metadata:
-        answer_extracted = extract_output(generated_text, item="ANSWER")
+        # If we used the extractor path, try extracting the answer from the cleaned MCQ text.
+        answer_extracted = None
+        if used_mcq_extractor:
+            answer_extracted = extract_output(mcq_metadata["mcq"], item="ANSWER")
+        if not answer_extracted and generated_text:
+            answer_extracted = extract_output(generated_text, item="ANSWER")
         if answer_extracted:
             logger.info("Answer extracted successfully.")
-            mcq_metadata["mcq_answer"] = answer_extracted
+            mcq_metadata["mcq_answer"] = _normalize_answer(answer_extracted)
         else:
             logger.warning("Falling back to answer agent.")
-            mcq_metadata["mcq_answer"] = await extract_answer_with_agent(generated_text)
+            # Use generated_text if available; otherwise use mcq text
+            source_text = generated_text if generated_text else mcq_metadata["mcq"]
+            mcq_metadata["mcq_answer"] = _normalize_answer(
+                await extract_answer_with_agent(source_text, model=model)
+            )
 
-    
         # Evaluate the generated question
         evaluation_meta = await generate_evaluation(
             invocation_id=invocation_id,
@@ -132,40 +188,46 @@ async def generate_mcq(invocation_id: str,
         )
         if evaluation_meta:
             logger.info("Evaluation metadata generated successfully.")
+            # Normalize evaluation to dict
             if isinstance(evaluation_meta, dict):
                 evaluation_meta_dict = evaluation_meta
             elif isinstance(evaluation_meta, str):
                 try:
-                    evaluation_meta_dict = extract_json_string(evaluation_meta)
-                except ValueError as e:
+                    evaluation_meta_dict = extract_json_string(evaluation_meta)  # may return dict/str
+                    if not isinstance(evaluation_meta_dict, dict):
+                        logger.error("Parsed evaluation_meta is not a dict; using empty dict.")
+                        evaluation_meta_dict = {}
+                except Exception as e:
                     logger.error(f"Failed to parse evaluation_meta as JSON: {e}")
-                    evaluation_meta_dict = {}  # Fallback to empty dict or handle differently
+                    evaluation_meta_dict = {}
             else:
                 logger.error(f"Unexpected type for evaluation_meta: {type(evaluation_meta)}")
-                evaluation_meta_dict = {}  # Fallback to empty dict or raise an error
+                evaluation_meta_dict = {}
             if evaluation_meta_dict:
-                if evaluation_meta_dict["evaluation"] == "YES":
+                status = evaluation_meta_dict.get("evaluation")
+                if status == "YES":
                     logger.info("Evaluation passed successfully.")
-                elif evaluation_meta_dict["evaluation"] == "REVISED":
+                elif status == "REVISED":
                     logger.info("Evaluation revised successfully.")
                     revised_mcq = evaluation_meta_dict.get("revised_mcq", "")
                     revised_answer = evaluation_meta_dict.get("revised_answer", "")
                     if revised_mcq:
                         mcq_metadata["mcq"] = revised_mcq
                     if revised_answer:
-                        mcq_metadata["mcq_answer"] = revised_answer
-                elif evaluation_meta_dict["evaluation"] == "NO":
+                        mcq_metadata["mcq_answer"] = _normalize_answer(revised_answer)
+                elif status == "NO":
                     logger.info(f"Evaluation failed on attempt {attempt}/{max_attempt}")
                     if attempt < max_attempt:
                         # Prepare for next attempt
                         task["previous_mcq"] = mcq_metadata.get("mcq", "No MCQ")
                         task["previous_answer"] = mcq_metadata.get("mcq_answer", "No answer")
-                        task["evaluation_reasoning"] = evaluation_meta.get("reasoning", "No reasoning")
+                        task["evaluation_reasoning"] = evaluation_meta_dict.get("reasoning", "No reasoning")
                         return await generate_mcq(
                             invocation_id=invocation_id,
                             model=model,
                             task=task,
-                            table_name=mcq_metadata_table_name,
+                            mcq_metadata_table_name=mcq_metadata_table_name,
+                            evaluation_metadata_table_name=evaluation_metadata_table_name,
                             database_file=database_file,
                             max_attempt=max_attempt,
                             attempt=attempt + 1
@@ -174,9 +236,11 @@ async def generate_mcq(invocation_id: str,
                         logger.warning("Max attempts reached. Setting default failure values.")
                         mcq_metadata["mcq"] = "No MCQ generated due to evaluation failure."
                         mcq_metadata["mcq_answer"] = "No answer generated due to evaluation failure."
+                else:
+                    logger.warning("Unknown evaluation status: %r", status)
 
         insert_metadata(mcq_metadata, mcq_metadata_table_name, database_file)
-        
+
     return mcq_metadata
 
 
@@ -184,7 +248,7 @@ async def generate_candidate_mcqs_async(
     invocation_id: str,
     model: str,
     task: Dict,
-    mcq_table_name: str= "mcq_metadata",
+    mcq_table_name: str = "mcq_metadata",
     evaluation_table_name: str = "evaluation_metadata",
     database_file: str = '../database/mcq_metadata.db',
     max_attempt: int = 3,
@@ -194,11 +258,17 @@ async def generate_candidate_mcqs_async(
     Asynchronously generate a single MCQ.
     """
     try:
-        mcq_metadata = await generate_mcq(invocation_id, model, task, mcq_table_name, evaluation_table_name, database_file, max_attempt, attempt)
+        mcq_metadata = await generate_mcq(
+            invocation_id, model, task,
+            mcq_table_name, evaluation_table_name, database_file,
+            max_attempt, attempt
+        )
         return mcq_metadata
     except Exception as e:
         logger.error(f"Error generating MCQ: {e}")
-        return {}
+        # Stable shape on error
+        return {"mcq": None, "mcq_answer": None, "error": str(e)}
+
 
 async def generate_mcq_quality_first(
     invocation_id: str,
@@ -219,8 +289,9 @@ async def generate_mcq_quality_first(
         invocation_id (str): Unique identifier for the invocation.
         model (str): Model to be used for generation.
         task (Dict): Task details including question type, text, and context.
-        mcq_table_name (str): Name of the table for MCQ metadata.
-        ranking_table_name (str): Name of the table for ranking metadata.
+        mcq_metadata_table_name (str): Name of the table for MCQ metadata.
+        evaluation_metadata_table_name (str): Name of the table for evaluation metadata.
+        ranking_metadata_table_name (str): Name of the table for ranking metadata.
         database_file (str): Path to the database file.
         max_attempt (int): Maximum number of attempts for generation.
         attempt (int): Current attempt number.
@@ -234,27 +305,40 @@ async def generate_mcq_quality_first(
 
     # Generate multiple candidate questions concurrently
     tasks = [
-        generate_candidate_mcqs_async(invocation_id, model, task, mcq_metadata_table_name, evaluation_metadata_table_name, database_file, max_attempt, attempt)
+        generate_candidate_mcqs_async(
+            invocation_id, model, task,
+            mcq_metadata_table_name, evaluation_metadata_table_name,
+            database_file, max_attempt, attempt
+        )
         for _ in range(candidate_num)
     ]
     candidate_questions_metadata = await asyncio.gather(*tasks)
 
-    # Filter out any None or empty results
-    candidate_questions = [
-        {"question_number": i, "question": mcq["mcq"], "answer": mcq["mcq_answer"]}
-        for i, mcq in enumerate(candidate_questions_metadata) if mcq
-    ]
+    # Filter out any None or invalid results, and keep only those with both question and answer
+    candidate_questions: List[Dict[str, Any]] = []
+    for i, mcq in enumerate(candidate_questions_metadata):
+        if isinstance(mcq, dict) and mcq.get("mcq") and mcq.get("mcq_answer"):
+            candidate_questions.append({
+                "question_number": i,
+                "question": mcq["mcq"],
+                "answer": mcq["mcq_answer"]
+            })
 
     # Set up prompts for the ranking model
     ranking_prompt_file = "ranking_model.yaml"
-    ranking_prompts = get_prompts(ranking_prompt_file)
+    try:
+        ranking_prompts = get_prompts(ranking_prompt_file)
+    except Exception as e:
+        logger.error("Ranking prompt load failed: %s", e)
+        ranking_prompts = {"system_prompt": "", "user_prompt": ""}
+
     system_prompt = ranking_prompts.get("system_prompt", "")
-    user_prompt = ranking_prompts.get("user_prompt", "").format(
-        question_type=task.get("question_type", "").lower(),
-        text=task.get("text", ""),
-        context=task.get("context", ""),
-        candidate_questions=candidate_questions
-    )
+    user_prompt = ranking_prompts.get("user_prompt", "").format_map(defaultdict(str, {
+        "question_type": task.get("question_type", "").lower(),
+        "text": task.get("text", ""),
+        "context": task.get("context", ""),
+        "candidate_questions": candidate_questions
+    }))
 
     # Initialize the agent with the prompt
     ranking_agent = Agent(
@@ -283,21 +367,32 @@ async def generate_mcq_quality_first(
         "model": model
     })
 
+    selected_mcq = "No candidates available."
+    selected_mcq_answer = "N/A"
+    selected_mcq_num_int = 0  # default fallback
+
     if generated_text:
-        generated_text_dict = extract_json_string(generated_text)
-        selected_mcq_num = generated_text_dict.get("best_question", {}).get("question_number")
         try:
-            selected_mcq_num_int = int(selected_mcq_num)
-        except (TypeError, ValueError):
-            logger.warning("The selected MCQ number is not valid. Defaulting to 0.")
-            return 0
-        
+            generated_text_dict = extract_json_string(generated_text)
+        except Exception as e:
+            logger.warning("Ranking JSON parse failed: %s; defaulting to first candidate.", e)
+            generated_text_dict = {}
+        if isinstance(generated_text_dict, dict):
+            selected_mcq_num = (generated_text_dict.get("best_question") or {}).get("question_number")
+            try:
+                selected_mcq_num_int = int(selected_mcq_num)
+            except (TypeError, ValueError):
+                logger.warning("The selected MCQ number is not valid. Defaulting to 0.")
+        else:
+            logger.warning("Ranking output is not a dict. Defaulting to first candidate (0).")
+
         if not (0 <= selected_mcq_num_int < len(candidate_questions)):
             logger.warning("The selected MCQ number is out of the allowed range. Defaulting to 0.")
-            return 0
+            selected_mcq_num_int = 0
 
-        selected_mcq = candidate_questions[selected_mcq_num_int]["question"] 
-        selected_mcq_answer = candidate_questions[selected_mcq_num_int]["answer"]
+        if candidate_questions:
+            selected_mcq = candidate_questions[selected_mcq_num_int]["question"]
+            selected_mcq_answer = candidate_questions[selected_mcq_num_int]["answer"]
 
         ranking_metadata.update({
             "completion": generated_text,
@@ -305,13 +400,12 @@ async def generate_mcq_quality_first(
             "mcq_answer": selected_mcq_answer
         })
     else:
-        logger.warning("Failed to generate a ranking.")
+        logger.warning("Failed to generate a ranking; defaulting to first candidate if available.")
         if candidate_questions:
             selected_mcq = candidate_questions[0]["question"]
             selected_mcq_answer = candidate_questions[0]["answer"]
-
         ranking_metadata.update({
-            "completion": "No ranking generated due to failed generation. Choose the first candidate question instead.",
+            "completion": "No ranking generated; chose first candidate if available.",
             "mcq": selected_mcq,
             "mcq_answer": selected_mcq_answer
         })
@@ -321,25 +415,34 @@ async def generate_mcq_quality_first(
 
     return ranking_metadata
 
-async def extract_answer_with_agent(generated_text: str) -> str:
+
+async def extract_answer_with_agent(generated_text: str, model: str = "gpt-3.5-turbo") -> str:
     """Extract the answer from the generated text using an agent."""
-    prompts = get_prompts("mcq_answer_extractor_prompts.yaml")
+    try:
+        prompts = get_prompts("mcq_answer_extractor_prompts.yaml")
+    except Exception as e:
+        logger.error("Answer extractor prompt load failed: %s", e)
+        prompts = {"system_prompt": "", "user_prompt": "Extract the answer from:\n{text}"}
     agent = Agent(
-        model="gpt-3.5-turbo",
+        model=model,
         system_prompt=prompts.get("system_prompt", ""),
-        user_prompt=prompts.get("user_prompt", "").format(text=generated_text)
+        user_prompt=prompts.get("user_prompt", "").format_map(defaultdict(str, {"text": generated_text}))
     )
     result = await agent.completion_generation()
     return result or "Sorry, the answer for this question was not provided."
 
 
-async def extract_mcq_with_agent(generated_text: str) -> str:
+async def extract_mcq_with_agent(generated_text: str, model: str = "gpt-3.5-turbo") -> str:
     """Extract the MCQ from the generated text using an agent."""
-    prompts = get_prompts("mcq_extractor_prompts.yaml")
+    try:
+        prompts = get_prompts("mcq_extractor_prompts.yaml")
+    except Exception as e:
+        logger.error("MCQ extractor prompt load failed: %s", e)
+        prompts = {"system_prompt": "", "user_prompt": "Extract the MCQ from:\n{text}"}
     agent = Agent(
-        model="gpt-3.5-turbo",
+        model=model,
         system_prompt=prompts.get("system_prompt", ""),
-        user_prompt=prompts.get("user_prompt", "").format(text=generated_text)
+        user_prompt=prompts.get("user_prompt", "").format_map(defaultdict(str, {"text": generated_text}))
     )
     result = await agent.completion_generation()
     return result or "Sorry, We couldn't generate a multiple-choice question for you."
@@ -370,9 +473,10 @@ async def generate_all_mcqs(
                 max_attempt=max_attempt,
             )
 
-    # Let failures be isolated; filter out Nones if you add try/except
-    results = await asyncio.gather(*(_run(t) for t in task_list), return_exceptions=False)
-    return list(results)
+    # Let failures be isolated
+    results = await asyncio.gather(*(_run(t) for t in task_list), return_exceptions=True)
+    safe: List[Dict[str, Any]] = [r for r in results if isinstance(r, dict)]
+    return list(safe)
 
 
 async def generate_all_mcqs_quality_first(
@@ -406,5 +510,6 @@ async def generate_all_mcqs_quality_first(
                 candidate_num=candidate_num,
             )
 
-    results = await asyncio.gather(*(_run(t) for t in task_list), return_exceptions=False)
-    return list(results)
+    results = await asyncio.gather(*(_run(t) for t in task_list), return_exceptions=True)
+    safe: List[Dict[str, Any]] = [r for r in results if isinstance(r, dict)]
+    return list(safe)
