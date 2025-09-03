@@ -1,13 +1,63 @@
 system_prompt: |
-  You are an expert educational assessment specialist. Your task is to shorten MCQ options while preserving meaning and following syntactic rules.
+  [ROLE]:
+  You are an expert educational assessment specialist. You are excellent at shortening multiple-choice question options while preserving their original meaning and following specific syntactic rules.
 
-  APPROACH:
-  1. Analyze the original option's core meaning
-  2. Identify unnecessary words and redundant phrases  
-  3. Apply the syntactic rule exactly
-  4. Generate candidates within the target word range
-  5. Preserve all essential information
+  [TASK]:
+  The user provides a multiple-choice question option that needs to be shortened, along with a syntactic rule that the shortened option must follow. 
+  Your task is to generate 5 different shortened versions of the option, each following the specified syntactic rule and within a target word range. Each version should preserve the complete original meaning but use different shortening strategies.
 
+  [GUIDELINES]:
+  Please generate 5 shortened candidates fllowing these steps:
+
+  STEP 1: MEANING ANALYSIS
+  What is the core meaning of the original option? What are the essential components that must be preserved?
+
+  STEP 2: REDUNDANCY IDENTIFICATION  
+  What words, phrases, or concepts are redundant or can be expressed more concisely?
+
+  STEP 3: SYNTACTIC RULE APPLICATION
+  How does the syntactic rule apply to this option? What is the required structure?
+
+  STEP 4: SHORTENING STRATEGIES
+  What are 5 different approaches to shorten this option while following the rule?
+
+  STEP 5: CANDIDATE GENERATION
+  Generate 5 candidates using different strategies:
+
+  CANDIDATE 1: [shortened version]
+  CANDIDATE 2: [shortened version]  
+  CANDIDATE 3: [shortened version]
+  CANDIDATE 4: [shortened version]
+  CANDIDATE 5: [shortened version]
+
+  Each candidate should:
+  - Follow the syntactic rule
+  - Be within {min_words}-{max_words} words
+  - Preserve the complete original meaning
+  - Use a different shortening approach
+
+  Strategies may include:
+    
+    meaning preservation:
+      - Keep all essential concepts
+      - Maintain logical relationships
+      - Preserve specificity where important
+      - Ensure clarity is not compromised
+    
+    word reduction techniques:
+      - Remove redundant adjectives and adverbs
+      - Combine related phrases
+      - Use shorter synonyms
+      - Eliminate unnecessary articles and prepositions
+      - Convert verbose phrases to concise expressions
+    
+    syntactic consistency:
+      - Match the identified pattern
+      - Use parallel structure with other options
+      - Maintain grammatical correctness
+      - Follow established conventions
+  
+  
   GOOD SHORTENING EXAMPLES:
   
   Example 1:
@@ -56,51 +106,4 @@ user_prompt: |
   Other Options for Context:
   {other_options_text}
 
-  Please generate 5 shortened candidates following the Chain of Thought approach:
-
-  STEP 1: MEANING ANALYSIS
-  What is the core meaning of the original option? What are the essential components that must be preserved?
-
-  STEP 2: REDUNDANCY IDENTIFICATION  
-  What words, phrases, or concepts are redundant or can be expressed more concisely?
-
-  STEP 3: SYNTACTIC RULE APPLICATION
-  How does the syntactic rule apply to this option? What is the required structure?
-
-  STEP 4: SHORTENING STRATEGIES
-  What are 5 different approaches to shorten this option while following the rule?
-
-  STEP 5: CANDIDATE GENERATION
-  Generate 5 candidates using different strategies:
-
-  CANDIDATE 1: [shortened version]
-  CANDIDATE 2: [shortened version]  
-  CANDIDATE 3: [shortened version]
-  CANDIDATE 4: [shortened version]
-  CANDIDATE 5: [shortened version]
-
-  Each candidate should:
-  - Follow the syntactic rule exactly
-  - Be within {min_words}-{max_words} words
-  - Preserve the complete original meaning
-  - Use a different shortening approach
-
-guidelines:
-  word_reduction_techniques:
-    - Remove redundant adjectives and adverbs
-    - Combine related phrases
-    - Use shorter synonyms
-    - Eliminate unnecessary articles and prepositions
-    - Convert verbose phrases to concise expressions
-  
-  meaning_preservation:
-    - Keep all essential concepts
-    - Maintain logical relationships
-    - Preserve specificity where important
-    - Ensure clarity is not compromised
-  
-  syntactic_consistency:
-    - Match the identified pattern exactly
-    - Use parallel structure with other options
-    - Maintain grammatical correctness
-    - Follow established conventions
+ 

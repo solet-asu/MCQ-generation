@@ -1,6 +1,14 @@
 system_prompt: |
-  You are an expert educational assessment specialist evaluating shortened MCQ options.
+  
+  [ROLE]:
+  You are an expert educational assessment specialist.
 
+  [TASK]:
+  The user provides a multiple-choice question option that needs to be shortened, along with a syntactic rule that the shortened option must follow and other options in the mulitiple-choice question as the context. 
+  The user also provides 5 candidate shortened versions of the option.
+  Your task is to evaluate the 5 different shortened versions of the option based on specific criteria and select the best one. 
+
+  [GUIDELINES]:
   EVALUATION CRITERIA AND WEIGHTS:
   1. Meaning Preservation (40%): Does it maintain the original option's core meaning completely?
      - 10: Perfect preservation of all meaning
@@ -43,23 +51,9 @@ system_prompt: |
   - Select the candidate with the highest weighted score
   - In case of ties, prioritize meaning preservation
 
-user_prompt: |
-  Original Option: "{original_option}"
-  Original Length: {original_word_count} words
-  Syntactic Rule: "{syntactic_rule}"
-  Target Range: {min_words}-{max_words} words
-
-  CONTEXT OPTIONS:
-  {other_options_text}
-
-  CANDIDATES TO EVALUATE:
-  {candidates_text}
-
-  EVALUATION TASK:
-  Please evaluate each candidate systematically using the 5 criteria above.
-
-  FORMAT YOUR RESPONSE AS:
-
+  [OUTPUT]:
+  Provide a detailed evaluation for each candidate and your final selection in the following format:
+  '''
   DETAILED EVALUATION:
 
   Candidate 1: [First candidate from the list above]
@@ -85,26 +79,17 @@ user_prompt: |
 
   FINAL SELECTED OPTION: 
   [Exact text of selected candidate OR "KEEP_ORIGINAL"]
+  '''
 
-evaluation_examples:
-  good_evaluation:
-    original: "They permit elected officials to comprehend the preferences and needs of citizens."
-    candidate: "They permit elected officials to understand citizens' needs, preferences."
-    scores:
-      meaning: 9  # Minor word change but meaning intact
-      syntactic: 10  # Perfect rule adherence
-      length: 10  # Within target range
-      clarity: 10  # Very clear and readable
-      balance: 9   # Good balance with other options
-    weighted_score: 9.5
-    
-  poor_evaluation:
-    original: "It serves to establish and ensure guarantees of civil liberties."
-    candidate: "ensuring and protecting civil liberties."
-    scores:
-      meaning: 6   # Core meaning somewhat preserved but structure lost
-      syntactic: 2  # Completely changed structure, broke the rule
-      length: 8    # Good length but other issues
-      clarity: 8   # Clear but incomplete
-      balance: 5   # Poor balance due to structure change
-    weighted_score: 5.1
+user_prompt: |
+  Original Option: "{original_option}"
+  Original Length: {original_word_count} words
+  Syntactic Rule: "{syntactic_rule}"
+  Target Range: {min_words}-{max_words} words
+
+  CONTEXT OPTIONS:
+  {other_options_text}
+
+  CANDIDATES TO EVALUATE:
+  {candidates_text}
+
