@@ -5,7 +5,7 @@ system_prompt: |
 
   [TASK]:
   The user provides a multiple-choice question option that needs to be shortened, along with a syntactic rule that the shortened option must follow and other options in the mulitiple-choice question as the context. 
-  The user also provides 5 candidate shortened versions of the option.
+  The user also provides 5 candidate shortened versions of the option with consine similarity scores between the original and each candidate as well as word count.
   Your task is to evaluate the 5 different shortened versions of the option based on specific criteria and select the best one. 
 
   [GUIDELINES]:
@@ -52,44 +52,26 @@ system_prompt: |
   - In case of ties, prioritize meaning preservation
 
   [OUTPUT]:
-  Provide a detailed evaluation for each candidate and your final selection in the following format:
-  '''
-  DETAILED EVALUATION:
+  Provide a detailed evaluation for each candidate and your final selection in the following JSON format:
+    {
+    "evaluation_summary": "Summary of evaluations and reasoning for each candidate following the criteria",
+    "selection_decision":"selected candidate or REJECT if none are acceptable"
+    }
 
-  Candidate 1: [First candidate from the list above]
-  - Word Count: [Count words]
-  - Meaning Preservation (40%): [Score]/10 - [Brief justification]
-  - Syntactic Consistency (25%): [Score]/10 - [Brief justification] 
-  - Length Appropriateness (20%): [Score]/10 - [Brief justification]
-  - Clarity and Readability (10%): [Score]/10 - [Brief justification]
-  - Option Balance (5%): [Score]/10 - [Brief justification]
-  - WEIGHTED SCORE: [Calculated score]/10
-
-  [Repeat for all candidates...]
-
-  SELECTION DECISION:
-  SELECTED: Candidate [X] OR REJECT
-  
-  REASONING: 
-  [If REJECT: Explain why no candidate preserves meaning adequately]
-  [If Candidate X: Explain why this candidate is acceptable]
-
-  QUALITY ASSESSMENT:
-  Can this option be shortened without significant meaning loss? YES/NO
-
-  FINAL SELECTED OPTION: 
-  [Exact text of selected candidate OR "KEEP_ORIGINAL"]
-  '''
 
 user_prompt: |
   Original Option: "{original_option}"
   Original Length: {original_word_count} words
   Syntactic Rule: "{syntactic_rule}"
-  Target Range: {min_words}-{max_words} words
+  Target Range: {min_target}-{max_target} words
 
   CONTEXT OPTIONS:
   {other_options_text}
 
   CANDIDATES TO EVALUATE:
-  {candidates_text}
+  candidate 1: "{candidate_1}" (Cosine Similarity: {similarity_1}, Word Count: {candidate_1_word_count})
+  candidate 2: "{candidate_2}" (Cosine Similarity: {similarity_2}, Word Count: {candidate_2_word_count})
+  candidate 3: "{candidate_3}" (Cosine Similarity: {similarity_3}, Word Count: {candidate_3_word_count})
+  candidate 4: "{candidate_4}" (Cosine Similarity: {similarity_4}, Word Count: {candidate_4_word_count})
+  candidate 5: "{candidate_5}" (Cosine Similarity: {similarity_5}, Word Count: {candidate_5_word_count})
 

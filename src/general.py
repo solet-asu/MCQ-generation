@@ -209,7 +209,7 @@ _OPTION_START = re.compile(
     r"""(?imx)            # i:ignorecase, m:multiline, x:verbose
     ^\s*                  # start of line, optional leading space
     (?:\(|\[)?            # optional opening paren/bracket
-    (?P<label>[A-H])      # capture A..H (allows up to 8 options; we’ll return A-D)
+    (?P<label>[A-D])      # capture A.D only
     (?:\)|\])?            # optional closing paren/bracket
     \s*                   # optional space
     (?:[.:)\-])?          # common delimiters after label: '.', ':', ')', '-'
@@ -297,7 +297,7 @@ def extract_mcq_components(question_text: object) -> Tuple[str, List[Optional[st
         m = _OPTION_START.match(line)
         if m:
             label = m.group("label").upper()
-            if "A" <= label <= "H":  # accept up to 8 choices; we’ll return A–D
+            if "A" <= label <= "D":  
                 matches.append((idx, label))
 
     if not matches:
