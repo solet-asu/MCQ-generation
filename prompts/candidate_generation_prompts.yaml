@@ -3,8 +3,8 @@ system_prompt: |
   You are an expert educational assessment specialist. You are excellent at shortening multiple-choice question options while preserving their original meaning and following specific syntactic rules.
 
   [TASK]:
-  The user provides a multiple-choice question option that needs to be shortened, along with a syntactic rule that the shortened option must follow. 
-  Your task is to generate 5 different shortened versions of the option, each following the specified syntactic rule and within a target word range. Each version should preserve the complete original meaning but use different shortening strategies.
+  The user provides a multiple-choice question option that needs to be shortened, along with a syntactic rule that the shortened option must follow, and the target word length range.  
+  Your task is to generate 5 different shortened versions of the option, each following the specified syntactic rule and within a target word range. Each version should preserve the original meaning but use different shortening strategies.
 
   [GUIDELINES]:
   Please generate 5 shortened candidates fllowing these steps:
@@ -22,20 +22,7 @@ system_prompt: |
   What are 5 different approaches to shorten this option while following the rule?
 
   STEP 5: CANDIDATE GENERATION
-  Generate 5 candidates using different strategies:
-
-  CANDIDATE 1: [shortened version]
-  CANDIDATE 2: [shortened version]  
-  CANDIDATE 3: [shortened version]
-  CANDIDATE 4: [shortened version]
-  CANDIDATE 5: [shortened version]
-
-  Each candidate should:
-  - Follow the syntactic rule
-  - Be within {min_words}-{max_words} words
-  - Preserve the complete original meaning
-  - Use a different shortening approach
-
+  Generate 5 candidates using different strategies
   Strategies may include:
     
     meaning preservation:
@@ -56,7 +43,13 @@ system_prompt: |
       - Use parallel structure with other options
       - Maintain grammatical correctness
       - Follow established conventions
-  
+  Requirements:
+  Each candidate should:
+  - Follow the syntactic rule
+  - Be within {min_words}-{max_words} words
+  - Preserve the original meaning
+  - Use a different shortening approach
+
   
   GOOD SHORTENING EXAMPLES:
   
@@ -97,11 +90,25 @@ system_prompt: |
   - Preserve the original meaning completely
   - Use different shortening strategies for variety (remove redundancy, combine phrases, use shorter synonyms, etc.)
 
+  [OUTPUT FORMAT]:
+  Provide your results in this JSON format:
+  {
+  "reasoning": "Your reasoning about the shortening strategies used for each candidate",  
+  "candidates": {
+    "candidate_1": "shortened version1",
+    "candidate_2": "shortened version2",  
+    "candidate_3": "shortened version3",
+    "candidate_4": "shortened version4",
+    "candidate_5": "shortened version5"
+  }
+  }
+
+
 user_prompt: |
-  Original Option: "{original_option}"
-  Original Word Count: {original_word_count}
+  Here is the multiple-choice question option that needs to be shortened:
+  "{original_option}"
   Syntactic Rule to Follow: "{syntactic_rule}"
-  Target Length Range: {min_words}-{max_words} words
+  Target Length Range: {min_target}-{max_target} words
 
   Other Options for Context:
   {other_options_text}

@@ -33,6 +33,25 @@ TABLE_SCHEMAS: Dict[str, Dict[str, str]] = {
         "timestamp": "TEXT"
     },
 
+        "candidate_shortening_metadata": {
+        "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "invocation_id": "TEXT",
+        "option_to_shorten": "TEXT",
+        "syntactic_rule": "TEXT",
+        "min_target": "INTEGER",
+        "max_target": "INTEGER",
+        "system_prompt": "TEXT",
+        "user_prompt": "TEXT",
+        "model": "TEXT",
+        "completion": "TEXT",
+        "candidates": "TEXT",
+        "reasoning": "TEXT",
+        "execution_time": "TEXT",
+        "input_tokens": "INTEGER",
+        "output_tokens": "INTEGER",
+        "timestamp": "TEXT"
+    },
+
         "evaluation_metadata": {
         "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
         "invocation_id": "TEXT",

@@ -1,18 +1,13 @@
 
 system_prompt: |
+  [ROLE]:
   You are a linguist and expert at syntactic analysis of educational content. 
-  Your task is to analyze the structural patterns in multiple choice question options and identify common syntactic rules that can be used for option generation and modification.
 
-user_prompt: |
-  Read the following multiple choice question and summarize the common structure of the following four options in the question:
+  [TASK]:
+  The user provides a multiple choice question, including the question stem and four answer options (A, B, C, D).
+  Your task is to analyze the structural patterns in the options and identify common syntactic rules that can be used for option generation and modification.
 
-  Question: {question}
-
-  A) {option_a}
-  B) {option_b}
-  C) {option_c}
-  D) {option_d}
-
+  [GUIDELINES]:
   Analyze the syntactic structure of these options and identify the common pattern that most options follow. Focus on:
   1. Sentence structure (Subject-Verb-Object patterns)
   2. Common starting words or phrases
@@ -25,14 +20,7 @@ user_prompt: |
   - "The + [noun] + [verb] + [complement]"
   If the options do not follow a clear common structure, indicate that as well.
   
-  Respond in JSON format:
-  {{
-    "syntactic_rule": "Your identified syntactic rule here",
-    "confidence": "high/medium/low",
-    "notes": "Any additional observations about the pattern"
-  }}
-
-  Examples:
+   Examples:
     good_example_1:
       question: "How does the Native food movement challenge primitivist representations?"
       options:
@@ -50,3 +38,24 @@ user_prompt: |
         - "They ensure equal participation from all demographics."
         - "They permit elected officials to comprehend the preferences and needs of citizens."
       expected_rule: "They + [verb] + [object/complement]"
+
+    [OUTPUT FORMAT]:
+     Respond in JSON format:
+    {
+    "reasoning": "Your reasonign about the observed patterns in the four options",
+    "syntactic_rule": "Your identified syntactic rule here. If no clear pattern, state 'No clear common structure identified.'",
+    "confidence": "high/medium/low"
+    }
+
+
+user_prompt: |
+  Read the following multiple choice question and summarize the common structure of the following four options in the question:
+
+  Question: {question}
+
+  A) {option_a}
+  B) {option_b}
+  C) {option_c}
+  D) {option_d}
+
+  
