@@ -1,19 +1,20 @@
 
 from __future__ import annotations
 import math
-from typing import List, Optional, Sequence, Tuple, Dict
-from sklearn.metrics.pairwise import cosine_similarity
+from typing import List, Optional, Sequence, Tuple, Dict, Any, Union
 from sentence_transformers import SentenceTransformer
 import numpy as np
+import json
+import re
 
 from src.agent import Agent
 from src.general import count_words, extract_json_string, extract_mcq_components
 from src.prompt_fetch import get_prompts
 from src.database_handler import *
+from src.normalize_candidates import normalize_candidates
 import logging
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 _MIN_WORDS = 10
@@ -89,7 +90,7 @@ def syntactic_analysis(
         model: str = "gpt-4o", 
         temperature: float =0.3,
         question_stem: str = "",
-        options: List[str] = [],
+        options: Optional[List[str]] = None,
         table_name: str= "syntactic_analysis_metadata",
         database_file: str= '../database/mcq_metadata.db') -> Dict:
 
@@ -134,7 +135,12 @@ def syntactic_analysis(
 
 
     if generated_text:
-        generated_text_dict = extract_json_string(generated_text)
+
+        try:
+            generated_text_dict = extract_json_string(generated_text) or {}
+        except Exception:
+            logger.exception("Failed to parse model output as JSON.")
+            generated_text_dict = {}
 
         identified_rule = str(generated_text_dict.get("syntactic_rule", "") or "").strip()
         syntactic_analysis_metadata["syntactic_rule"] = identified_rule
@@ -184,252 +190,370 @@ def calculate_length_range(options: Sequence[Optional[str]]) -> Tuple[int, int]:
 
 
 def generate_candidate_short_options(
-        invocation_id: str,
-        model: str, 
-        options: List[str],
-        option_to_shorten: str,
-        syntactic_rule: str,
-        min_target:int,
-        max_target:int,
-        table_name: str="candidate_shortening_metadata",
-        database_file: str= '../database/mcq_metadata.db') -> Dict:
-
-    """Generate candidate short options and store metadata."""
+    invocation_id: str,
+    model: str, 
+    options: List[str],
+    option_to_shorten: str,
+    syntactic_rule: str,
+    min_target: int,
+    max_target: int,
+    table_name: str = "candidate_shortening_metadata",
+    database_file: str = "../database/mcq_metadata.db",
+) -> Dict:
+    """Generate candidate short options and store metadata as a JSON list."""
     create_table(table_name, database_file)
 
     if not isinstance(model, str) or not model.strip():
         raise ValueError("Parameter 'model' must be a non-empty string.")
-    
+
+    # Normalize MCQ options and context block (value-based; index-based is safer if available)
     optA, optB, optC, optD = _normalize_options(options)
-    other_options = [o for o in [optA, optB, optC, optD] if o != option_to_shorten]
+    other_options = [o for o in [optA, optB, optC, optD] if o != option_to_shorten][:3]
     if len(other_options) != 3:
         logger.warning("Expected exactly one option to shorten among four options.")
-    other_options_str="\n ".join(other_options)
+    other_options_text = "\n".join(other_options)
 
+    # Prompts
     prompt_file = "candidate_generation_prompts.yaml"
-    prompts = get_prompts(prompt_file)
-
+    prompts = get_prompts(prompt_file) or {}
     system_prompt = prompts.get("system_prompt", "")
-    user_prompt = prompts.get("user_prompt", "").format(
-        original_option =option_to_shorten,
-        syntactic_rule=syntactic_rule,
-        min_target=min_target,
-        max_target=max_target,
-        other_options_text=other_options_str
-    )
-
-    candidate_generator = Agent(
-        model=model,
-        system_prompt=system_prompt,
-        user_prompt=user_prompt
-    )
-    
-    generated_text = candidate_generator.completion_generation()
-
-    candidate_shortening_metadata = candidate_generator.get_metadata()
-    candidate_shortening_metadata.update({
-        "invocation_id": invocation_id,
-        "option_to_shorten": option_to_shorten,
-        "syntactic_rule": syntactic_rule,
-        "min_target": min_target,
-        "max_target": max_target
-    })
-
-
-    if generated_text:
-        try:
-            generated_text_dict = extract_json_string(generated_text)
-        except Exception:
-            logger.exception("Failed to parse model output as JSON.")
-            generated_text_dict = {}
-
-        if isinstance(generated_text_dict, dict):
-            candidates = generated_text_dict.get("candidates", {})
-            candidate_shortening_metadata["candidates"] = str(candidates)
-            reasoning = generated_text_dict.get("reasoning", "")
-            candidate_shortening_metadata["reasoning"] = reasoning
-            logger.info(f"Generated {len(candidates)} candidate options.")
-        else:
-            candidates = {}
-            logger.warning("Extracted candidates is not a dictionary.")
-
-    else:
-        logger.warning("Failed to generate candidates.")
-        candidates = {}
-    
-    # Insert the metadata into the database
-    insert_metadata(candidate_shortening_metadata, table_name, database_file) 
-    return candidate_shortening_metadata
-
-
-# calculate cosine similarity 
-def cosine_similarity_analysis(
-    original_text: str,
-    shortened_text: str,
-    model: Optional[SentenceTransformer] = None,
-) -> Optional[float]:
-    """Return cosine similarity in [-1, 1] or None on failure.
-
-    If `model` is None, tries a global `semantic_model`.
-    """
-    # Basic input sanity
-    if not original_text or not shortened_text:
-        return None
-
-    # Resolve model
-    if model is None:
-        try:
-            model = SentenceTransformer('all-MiniLM-L6-v2')  
-        except NameError:
-            return None
-
+    user_prompt_template = prompts.get("user_prompt", "")
     try:
-        # One-shot encoding; normalized so cosine == dot product
-        embs = model.encode(
-            [original_text, shortened_text],
-            convert_to_numpy=True,
-            normalize_embeddings=True,
+        user_prompt = user_prompt_template.format(
+            original_option=option_to_shorten,
+            syntactic_rule=syntactic_rule,
+            min_target=min_target,
+            max_target=max_target,
+            other_options_text=other_options_text,
         )
-        sim = float(np.dot(embs[0], embs[1]))
-        if not np.isfinite(sim):
-            return None
-        # Numerical safety
-        return float(np.clip(sim, -1.0, 1.0))
     except Exception:
-        return None
+        logger.exception("Failed to format user prompt; using minimal fallback.")
+        user_prompt = (
+            f'Original: "{option_to_shorten}"\nRule: "{syntactic_rule}"\n'
+            f"Target: {min_target}-{max_target}\nOther options:\n{other_options_text}\n"
+            "Return JSON with a 'candidates' field (5 variants) and optional 'reasoning'."
+        )
 
-# select the best candidate or reject all
-def select_best_candidate(
-        invocation_id: str,
-        model: str,
-        options: List[str],
-        option_to_shorten: str,
-        syntactic_rule: str,
-        min_target:int,
-        max_target:int,
-        candidates: List[str],
-        table_name: str="candidate_selection_metadata",
-        database_file: str= '../database/mcq_metadata.db') -> Dict:
+    # LLM call
+    agent = Agent(model=model, system_prompt=system_prompt, user_prompt=user_prompt)
+    generated_text = agent.completion_generation()
 
-    """Select the best candidate option or reject all."""
-    create_table(table_name, database_file)
-
-    if not isinstance(model, str) or not model.strip():
-        raise ValueError("Parameter 'model' must be a non-empty string.")
-    
-    optA, optB, optC, optD = _normalize_options(options)
-    other_options = [o for o in [optA, optB, optC, optD] if o != option_to_shorten]
-    if len(other_options) != 3:
-        logger.warning("Expected exactly one option to shorten among four options.")
-    other_options_str="\n ".join(other_options)
-
-    if len(candidates) != 5:
-        logger.warning("Expected exactly 5 candidate options.")
-
-    # Calculate cosine similarities
-    # put candidate and its similarity score in pairs 
-    candidate_and_similarity = []
-    for candidate in candidates:
-        sim = cosine_similarity_analysis(option_to_shorten, candidate)
-        candidate_and_similarity.append((candidate, sim))
-
-    candidate_1, sim1 = candidate_and_similarity[0]
-    candidate_2, sim2 = candidate_and_similarity[1]
-    candidate_3, sim3 = candidate_and_similarity[2]
-    candidate_4, sim4 = candidate_and_similarity[3]
-    candidate_5, sim5 = candidate_and_similarity[4]
-    
-    original_word_count = count_words(option_to_shorten)
-    candidate_1_word_count = count_words(candidate_1)
-    candidate_2_word_count = count_words(candidate_2)
-    candidate_3_word_count = count_words(candidate_3)
-    candidate_4_word_count = count_words(candidate_4)
-
-    prompt_file = "candidate_selection_prompts.yaml"
-    prompts = get_prompts(prompt_file)
-
-    system_prompt = prompts.get("system_prompt", "")
-    user_prompt = prompts.get("user_prompt", "").format(
-        original_option =option_to_shorten,
-        original_word_count=original_word_count,
-        min_target=min_target,
-        max_target=max_target,
-        syntactic_rule=syntactic_rule,
-        other_options_text=other_options_str,
-        candidate_1=candidate_1,
-        similarity_1=sim1 if sim1 is not None else "N/A",
-        candidate_1_word_count=candidate_1_word_count,
-        candidate_2=candidate_2,
-        similarity_2=sim2 if sim2 is not None else "N/A",
-        candidate_2_word_count=candidate_2_word_count,
-        candidate_3=candidate_3,
-        similarity_3=sim3 if sim3 is not None else "N/A",   
-        candidate_3_word_count=candidate_3_word_count,
-        candidate_4=candidate_4,
-        similarity_4=sim4 if sim4 is not None else "N/A",
-        candidate_4_word_count=candidate_4_word_count,
-        candidate_5=candidate_5,
-        similarity_5=sim5 if sim5 is not None else "N/A",
-        candidate_5_word_count=count_words(candidate_5),
-   )
-
-    candidate_selector = Agent(
-        model=model,
-        system_prompt=system_prompt,
-        user_prompt=user_prompt
-    )
-    
-    generated_text = candidate_selector.completion_generation()
-    candidate_selection_metadata = candidate_selector.get_metadata()
-    candidate_selection_metadata.update({
+    meta = agent.get_metadata() or {}
+    meta.update({
         "invocation_id": invocation_id,
         "option_to_shorten": option_to_shorten,
         "syntactic_rule": syntactic_rule,
         "min_target": min_target,
         "max_target": max_target,
-        "candidates": str(candidates),
     })
+
+
+
+    candidates_list: List[str] = []
+    reasoning: str = ""
 
     if generated_text:
         try:
-            generated_text_dict = extract_json_string(generated_text)
+            payload = extract_json_string(generated_text) or {}
         except Exception:
             logger.exception("Failed to parse model output as JSON.")
-            generated_text_dict = {}
+            payload = {}
 
-        if isinstance(generated_text_dict, dict):
-            best_candidate = generated_text_dict.get("best_candidate", "")
-            candidate_selection_metadata["best_candidate"] = best_candidate
-            reasoning = generated_text_dict.get("evaluation_summary", "")
-            candidate_selection_metadata["reasoning"] = reasoning
-            logger.info(f"Selected candidate: '{best_candidate}'")
+        if isinstance(payload, dict):
+            reasoning = str(payload.get("reasoning", "") or "")
+            raw_cands = payload.get("candidates", [])
+            candidates_list = normalize_candidates(raw_cands)
+            non_empty = sum(1 for c in candidates_list if c)
+            logger.info("Generated %d/%d candidate options.", non_empty, len(candidates_list))
         else:
-            best_candidate = None
-            logger.warning("Extracted best_candidate is not a dictionary.")
+            logger.warning("Model output JSON is not a dict; no candidates parsed.")
+            candidates_list = ["", "", "", "", ""]
     else:
-        logger.warning("Failed to generate a selection.")
-        best_candidate = None
-    # Insert the metadata into the database
-    insert_metadata(candidate_selection_metadata, table_name, database_file)
-    return candidate_selection_metadata
+        logger.warning("Failed to generate candidates (empty LLM output).")
+        candidates_list = ["", "", "", "", ""]
+
+    # Persist as JSON list for downstream simplicity
+    meta["candidates"] = json.dumps(candidates_list, ensure_ascii=False)
+    meta["reasoning"] = reasoning
+
+    try:
+        insert_metadata(meta, table_name, database_file)
+    except Exception:
+        logger.exception("Failed to insert candidate generation metadata.")
+
+    return meta
+
+# cosine similarity analysis
+_EMBEDDER = None
+
+def _get_embedder():
+    global _EMBEDDER
+    if _EMBEDDER is None:
+        _EMBEDDER = SentenceTransformer('all-MiniLM-L6-v2')
+    return _EMBEDDER
+
+def cosine_similarity_analysis(original_text: str, shortened_text: str, model: Optional[SentenceTransformer] = None) -> Optional[float]:
+    """Return cosine similarity in [-1, 1] or None on failure.
+
+    If `model` is None, tries a global `semantic_model`.
+    """
+    if not original_text or not shortened_text:
+        return None
+    try:
+        model = model or _get_embedder()
+        embs = model.encode([original_text, shortened_text], convert_to_numpy=True, normalize_embeddings=True)
+        sim = float(np.dot(embs[0], embs[1]))
+        return float(np.clip(sim, -1.0, 1.0)) if np.isfinite(sim) else None
+    except Exception:
+        logger.exception("Embedding similarity failed.")
+        return None
+
+# select best candidate
+def select_best_candidate(
+    invocation_id: str,
+    model: str,
+    options: List[str],
+    option_to_shorten: str,
+    syntactic_rule: str,
+    min_target: int,
+    max_target: int,
+    candidates: Union[Dict[str, str], List[str], str],
+    table_name: str = "candidate_selection_metadata",
+    database_file: str = "../database/mcq_metadata.db",
+) -> Dict:
+    """
+    Select the best candidate option or reject all.
+
+    Inputs
+    ------
+    candidates: dict/list/JSON-string
+        - dict: {"candidate_1": "...", ..., "candidate_5": "..."}
+        - list: ["...", "...", "...", "...", "..."]
+        - str : JSON of either form
+
+    Output (metadata dict)
+    ----------------------
+    {
+      "best_candidate": "<text or ''>",
+      "evaluation_summary": "<model-provided summary or fallback note>",
+      "selection_decision": "<raw model decision or 'REJECT'>",
+      ... plus tracing fields (tokens if provided by Agent), inputs, etc.
+    }
+    """
+    create_table(table_name, database_file)
+
+    if not isinstance(model, str) or not model.strip():
+        raise ValueError("Parameter 'model' must be a non-empty string.")
+
+    # ---- normalize MCQ options (A–D) and build context per prompt ----
+    optA, optB, optC, optD = _normalize_options(options)
+    # Note: value-based exclusion can be ambiguous if duplicate texts exist.
+    other_options = [o for o in [optA, optB, optC, optD] if o != option_to_shorten][:3]
+    if len(other_options) != 3:
+        logger.warning("Expected exactly one option to shorten among four options.")
+    other_options_text = "\n".join(other_options)
+
+
+    cand_list = normalize_candidates(candidates)
+
+    # ---- compute similarities & word counts for prompt fields ----
+    pairs = []
+    for c in cand_list:
+        sim = cosine_similarity_analysis(option_to_shorten, c)
+        pairs.append((c, sim))
+
+    # Unpack for readability
+    (candidate_1, sim1), (candidate_2, sim2), (candidate_3, sim3), (candidate_4, sim4), (candidate_5, sim5) = pairs
+
+    original_word_count = count_words(option_to_shorten)
+    wc1 = count_words(candidate_1)
+    wc2 = count_words(candidate_2)
+    wc3 = count_words(candidate_3)
+    wc4 = count_words(candidate_4)
+    wc5 = count_words(candidate_5)
+
+    prompt_file = "candidate_selection_prompts.yaml"
+    prompts = get_prompts(prompt_file) or {}
+    system_prompt = prompts.get("system_prompt", "")
+    user_prompt_template = prompts.get("user_prompt", "")
+    try:
+        user_prompt = user_prompt_template.format(
+            original_option=option_to_shorten,
+            original_word_count=original_word_count,
+            min_target=min_target,
+            max_target=max_target,
+            syntactic_rule=syntactic_rule,
+            other_options_text=other_options_text,
+            candidate_1=candidate_1, similarity_1=sim1 if sim1 is not None else "N/A", candidate_1_word_count=wc1,
+            candidate_2=candidate_2, similarity_2=sim2 if sim2 is not None else "N/A", candidate_2_word_count=wc2,
+            candidate_3=candidate_3, similarity_3=sim3 if sim3 is not None else "N/A", candidate_3_word_count=wc3,
+            candidate_4=candidate_4, similarity_4=sim4 if sim4 is not None else "N/A", candidate_4_word_count=wc4,
+            candidate_5=candidate_5, similarity_5=sim5 if sim5 is not None else "N/A", candidate_5_word_count=wc5,
+        )
+    except Exception:
+        logger.exception("Failed to format user prompt; using minimal fallback.")
+        user_prompt = (
+            f'Original Option: "{option_to_shorten}" (words: {original_word_count})\n'
+            f'Syntactic Rule: "{syntactic_rule}"\nTarget Range: {min_target}-{max_target}\n\n'
+            f"Other options:\n{other_options_text}\n\n"
+            f'1) "{candidate_1}" (sim: {sim1}, wc: {wc1})\n'
+            f'2) "{candidate_2}" (sim: {sim2}, wc: {wc2})\n'
+            f'3) "{candidate_3}" (sim: {sim3}, wc: {wc3})\n'
+            f'4) "{candidate_4}" (sim: {sim4}, wc: {wc4})\n'
+            f'5) "{candidate_5}" (sim: {sim5}, wc: {wc5})\n'
+            "Return JSON with 'evaluation_summary' and 'selection_decision'."
+        )
+
+    # ---- LLM call ----
+    agent = Agent(model=model, system_prompt=system_prompt, user_prompt=user_prompt)
+    generated_text = agent.completion_generation()
+    meta = agent.get_metadata() or {}
+    meta.update({
+        "invocation_id": invocation_id,
+        "option_to_shorten": option_to_shorten,
+        "syntactic_rule": syntactic_rule,
+        "min_target": min_target,
+        "max_target": max_target,
+        # store normalized candidates as JSON list for consistency
+        "candidates": json.dumps(cand_list, ensure_ascii=False),
+    })
+
+    def _parse_selection_decision(decision: str, cands: List[str]) -> Optional[str]:
+        """
+        Accepts exact text, or labels like 'candidate 2', '2', 'option 3', 'REJECT'.
+        Returns chosen candidate text or None.
+        """
+        if not isinstance(decision, str):
+            return None
+        s = decision.strip()
+        if not s:
+            return None
+        if s.upper() == "REJECT":
+            return None
+        if s in cands:
+            return s
+
+        low = s.lower().strip().lstrip("#")
+        for prefix in ("candidate", "option", "opt", "c"):
+            if low.startswith(prefix):
+                low = low[len(prefix):].strip()
+                break
+        if low.isdigit():
+            idx = int(low) - 1
+            if 0 <= idx < len(cands):
+                return cands[idx]
+        if s.isdigit():
+            idx = int(s) - 1
+            if 0 <= idx < len(cands):
+                return cands[idx]
+        return None
+
+    best_candidate = ""
+    evaluation_summary = ""
+    selection_decision_raw = ""
+
+    if generated_text:
+        try:
+            payload = extract_json_string(generated_text) or {}
+        except Exception:
+            logger.exception("Failed to parse model output as JSON.")
+            payload = {}
+
+        if isinstance(payload, dict):
+            evaluation_summary = str(payload.get("evaluation_summary", "") or "")
+            selection_decision_raw = str(payload.get("selection_decision", "") or "")
+            proposed = _parse_selection_decision(selection_decision_raw, cand_list)
+
+            # Local validation aligned with the criteria:
+            # - Length Appropriateness: must be within target range
+            # - Option Balance: avoid exact dup with other options
+            if proposed:
+                wc = count_words(proposed)
+                is_len_ok = (min_target <= wc <= max_target) if (min_target and max_target) else True
+                is_not_duplicate = proposed not in other_options
+                if is_len_ok and is_not_duplicate:
+                    best_candidate = proposed
+                else:
+                    logger.info(
+                        "Model-selected candidate rejected by local checks "
+                        "(len_ok=%s, not_duplicate=%s).",
+                        is_len_ok, is_not_duplicate
+                    )
+        else:
+            logger.warning("Parsed JSON is not a dict.")
+    else:
+        logger.warning("No generated text from LLM.")
+
+    # ---- fallback aligned with 'prioritize meaning' in ties ----
+    if not best_candidate:
+        viable = []
+        for c, sim in pairs:
+            if not c:
+                continue
+            wc = count_words(c)
+            if (min_target and max_target) and not (min_target <= wc <= max_target):
+                continue
+            if c in other_options:
+                continue  # maintain option balance: avoid duplicates
+            if sim is None:
+                continue
+            viable.append((sim, c))
+        if viable:
+            # Highest similarity first (meaning preservation), tie-break by similarity then by longer text (minor).
+            viable.sort(key=lambda t: (t[0], len(t[1])), reverse=True)
+            best_candidate = viable[0][1]
+            if not evaluation_summary:
+                evaluation_summary = (
+                    "Fallback: selected highest-similarity candidate within target range, "
+                    "avoiding duplicates with other options."
+                )
+            if not selection_decision_raw:
+                selection_decision_raw = best_candidate
+        else:
+            selection_decision_raw = selection_decision_raw or "REJECT"
+
+    # ---- finalize & persist ----
+    meta["best_candidate"] = best_candidate
+    meta["evaluation_summary"] = evaluation_summary
+    meta["selection_decision"] = selection_decision_raw
+
+    insert_metadata(meta, table_name, database_file)
+    logger.info("Final decision: %s", best_candidate if best_candidate else "REJECT")
+    return meta
 
 
 def update_mcq_with_new_option(mcq: str, shortened_option: str, option_index: int) -> str:
-    """Update the MCQ string with the shortened option."""
-    if option_index not in [0, 1, 2, 3]:
+    if option_index not in (0, 1, 2, 3):
         raise ValueError("option_index must be 0 (A), 1 (B), 2 (C), or 3 (D).")
 
+    # Normalize replacement (single line)
+    normalized_new = " ".join((shortened_option or "").strip().split())
+    if not normalized_new:
+        raise ValueError("shortened_option cannot be empty after trimming.")
+
+    letters = ["A", "B", "C", "D"]
+    target = letters[option_index]
+    label = re.escape(target)
+
+    pattern = (
+        rf"(?ms)"  # multiline + dotall
+        rf"^(\s*(?:\(|\[)?{label}(?:\)|\]|\.|:)?\s+)"  # label prefix
+        rf"(.*?)"                                      # current option text
+        rf"(?=(?:\r?\n\s*(?:\(|\[)?[A-D](?:\)|\]|\.|:)?\s)|\Z)"  # up to next label or end
+    )
+
+    def _repl(m: re.Match) -> str:
+        return f"{m.group(1)}{normalized_new}"
+
+    new_mcq, n = re.subn(pattern, _repl, mcq, count=1)
+    if n == 1:
+        return new_mcq
+
+    # Fallback: parse & rebuild canonically
     question, options = extract_mcq_components(mcq)
     if len(options) != 4:
         raise ValueError("MCQ must have exactly 4 options.")
-
-    # Replace the specified option with the shortened version
-    options[option_index] = shortened_option.strip()
-
-    # Rebuild the MCQ string
-    letters = ['A', 'B', 'C', 'D']
-    new_options = [f"{letters[i]}) {options[i]}" for i in range(4)]
-    new_mcq = question + "\n\n" + "\n\n".join(new_options)
-
-    return new_mcq
+    options[option_index] = normalized_new
+    nl = "\r\n" if "\r\n" in mcq else "\n"
+    return question.rstrip() + nl + nl + (nl + nl).join(f"{letters[i]}) {options[i].strip()}" for i in range(4))
 

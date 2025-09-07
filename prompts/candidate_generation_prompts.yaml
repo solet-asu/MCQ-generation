@@ -46,7 +46,7 @@ system_prompt: |
   Requirements:
   Each candidate should:
   - Follow the syntactic rule
-  - Be within {min_words}-{max_words} words
+  - Be within the target word length range
   - Preserve the original meaning
   - Use a different shortening approach
 

@@ -55,7 +55,7 @@ system_prompt: |
   Provide a detailed evaluation for each candidate and your final selection in the following JSON format:
     {
     "evaluation_summary": "Summary of evaluations and reasoning for each candidate following the criteria",
-    "selection_decision":"selected candidate or REJECT if none are acceptable"
+    "selection_decision":"selected candidate (JUST THE CONTENT) or REJECT if none are acceptable"
     }
 
 

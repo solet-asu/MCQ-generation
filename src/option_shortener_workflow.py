@@ -1,7 +1,7 @@
 from typing import Dict, Tuple
-from general import extract_mcq_components, extract_correct_answer_letter
+from src.general import extract_mcq_components, extract_correct_answer_letter
 from option_shortening_helper import identify_longer_options, syntactic_analysis, calculate_length_range, generate_candidate_short_options, select_best_candidate, update_mcq_with_new_option
-import ast
+import json
 
 def check_and_shorten_long_option(invocation_id:str, mcq:str, model:str="gpt-4o")->Tuple[str, Dict]:
     # step 1: find the options 
@@ -45,7 +45,10 @@ def check_and_shorten_long_option(invocation_id:str, mcq:str, model:str="gpt-4o"
     shortened_options_candidates = shortened_options_candidates_meta.get("candidates", [])
     # convert string representation back to list
     if isinstance(shortened_options_candidates, str):
-        shortened_options_candidates = ast.literal_eval(shortened_options_candidates)
+        try:
+            shortened_options_candidates = json.loads(shortened_options_candidates)
+        except json.JSONDecodeError:
+            shortened_options_candidates = []
 
     input_tokens_accumulated += int(shortened_options_candidates_meta.get("input_tokens") or 0)
     output_tokens_accumulated += int(shortened_options_candidates_meta.get("output_tokens") or 0)

@@ -50,7 +50,6 @@ TABLE_SCHEMAS: Dict[str, Dict[str, str]] = {
         "timestamp": "TEXT"
     },
 
-
         "candidate_shortening_metadata": {
         "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
         "invocation_id": "TEXT",
@@ -82,8 +81,9 @@ TABLE_SCHEMAS: Dict[str, Dict[str, str]] = {
         "user_prompt": "TEXT",
         "model": "TEXT",
         "completion": "TEXT",
+        "evaluation_summary": "TEXT",
+        "selection_decision": "TEXT",
         "best_candidate": "TEXT",
-        "reasoning": "TEXT",
         "execution_time": "TEXT",
         "input_tokens": "INTEGER",
         "output_tokens": "INTEGER",
