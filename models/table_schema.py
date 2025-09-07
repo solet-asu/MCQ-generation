@@ -32,6 +32,63 @@ TABLE_SCHEMAS: Dict[str, Dict[str, str]] = {
         "output_tokens": "INTEGER",
         "timestamp": "TEXT"
     },
+        "syntactic_analysis_metadata": {
+        "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "invocation_id": "TEXT",
+        "question_stem": "TEXT",
+        "options": "TEXT",
+        "system_prompt": "TEXT",
+        "user_prompt": "TEXT",
+        "model": "TEXT",
+        "completion": "TEXT",
+        "syntactic_rule": "TEXT",
+        "confidence": "TEXT",
+        "reasoning": "TEXT",
+        "execution_time": "TEXT",
+        "input_tokens": "INTEGER",
+        "output_tokens": "INTEGER",
+        "timestamp": "TEXT"
+    },
+
+        "candidate_shortening_metadata": {
+        "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "invocation_id": "TEXT",
+        "option_to_shorten": "TEXT",
+        "syntactic_rule": "TEXT",
+        "min_target": "INTEGER",
+        "max_target": "INTEGER",
+        "system_prompt": "TEXT",
+        "user_prompt": "TEXT",
+        "model": "TEXT",
+        "completion": "TEXT",
+        "candidates": "TEXT",
+        "reasoning": "TEXT",
+        "execution_time": "TEXT",
+        "input_tokens": "INTEGER",
+        "output_tokens": "INTEGER",
+        "timestamp": "TEXT"
+    },
+
+        "candidate_selection_metadata": {
+        "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "invocation_id": "TEXT",
+        "option_to_shorten": "TEXT",
+        "syntactic_rule": "TEXT",
+        "min_target": "INTEGER",
+        "max_target": "INTEGER",
+        "candidates": "TEXT",
+        "system_prompt": "TEXT",
+        "user_prompt": "TEXT",
+        "model": "TEXT",
+        "completion": "TEXT",
+        "evaluation_summary": "TEXT",
+        "selection_decision": "TEXT",
+        "best_candidate": "TEXT",
+        "execution_time": "TEXT",
+        "input_tokens": "INTEGER",
+        "output_tokens": "INTEGER",
+        "timestamp": "TEXT"
+    },
 
         "evaluation_metadata": {
         "id": "INTEGER PRIMARY KEY AUTOINCREMENT",

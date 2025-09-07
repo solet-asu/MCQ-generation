@@ -1,9 +1,12 @@
 import os
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Optional, Tuple
 import json
 import logging
 import csv
 import pandas as pd
+import math
+import re
+from __future__ import annotations
 
 
 # Configure logging
@@ -64,21 +67,13 @@ def read_csv_file(file_path: str) -> List[Dict[str, str]]:
         return []
     
 
-def count_words(input_string: str) -> int:
-    """
-    Count the number of words in a given string.
+def count_words(text: str | None) -> int:
+    """Simple whitespace token count; treats None/empty as 0."""
+    if not text:
+        return 0
+    # Collapse internal whitespace and split
+    return len([t for t in str(text).strip().split() if t])
 
-    Args:
-        input_string (str): The string to count words in.
-
-    Returns:
-        int: The number of words in the string.
-    """
-    # Split the string into words using whitespace as the delimiter
-    words = input_string.split()
-    
-    # Return the number of words
-    return len(words)
 
 def count_paragraphs(input_string: str) -> int:
     """
@@ -207,3 +202,181 @@ def remove_duplicates_by_column(input_file: str, column_name: str, output_file: 
         print(f"Error: File '{input_file}' not found.")
     except Exception as e:
         print(f"An error occurred: {e}")
+
+
+
+_OPTION_START = re.compile(
+    r"""(?imx)            # i:ignorecase, m:multiline, x:verbose
+    ^\s*                  # start of line, optional leading space
+    (?:\(|\[)?            # optional opening paren/bracket
+    (?P<label>[A-D])      # capture A.D only
+    (?:\)|\])?            # optional closing paren/bracket
+    \s*                   # optional space
+    (?:[.:)\-])?          # common delimiters after label: '.', ':', ')', '-'
+    \s+                   # at least one space before the text
+    """
+)
+
+_ANSWER_LETTER_RE = re.compile(
+    r"""(?ix)            # i: ignore case, x: verbose
+    ^\s*
+    (?: (?:correct\s*)?answer \s*[:\-]\s* )?  # optional "Answer:" or "correct answer -"
+    (?:\(|\[)?                               # optional opening paren/bracket
+    (?P<letter>[A-D])                        # capture A–D only
+    (?:\)|\])?                               # optional closing paren/bracket
+    \s*
+    (?:[.:)\-])?                             # optional delimiter after label
+    """,
+)
+
+_CODE_FENCE_LINE = re.compile(r"^\s*```.*$")
+
+def _is_missing(value: object) -> bool:
+    # Robust "missing" check without pandas
+    if value is None:
+        return True
+    if isinstance(value, float) and math.isnan(value):  # e.g., came from a DataFrame
+        return True
+    s = str(value).strip()
+    return s == "" or s.lower() in {"nan", "none", "null"}
+
+def _normalize(text: str) -> str:
+    """
+    Normalize common MCQ text artifacts:
+    - Strip code fences (``` or ```question format)
+    - Convert escaped '\\n' sequences to real newlines
+    - Normalize CRLF/CR to LF
+    - Collapse excessive blank lines
+    """
+    # Remove single-line code fences if present
+    lines = [ln for ln in text.splitlines() if not _CODE_FENCE_LINE.match(ln)]
+    s = "\n".join(lines).strip()
+
+    # Turn literal backslash-n into real newlines (handles CSVs with '\\nA)')
+    s = s.replace("\\n", "\n")
+
+    # Normalize newlines
+    s = s.replace("\r\n", "\n").replace("\r", "\n")
+
+    # Collapse 3+ blank lines to one
+    s = re.sub(r"\n{3,}", "\n\n", s)
+
+    return s.strip()
+
+def extract_mcq_components(question_text: object) -> Tuple[str, List[Optional[str]]]:
+    """Extract MCQ stem and up to four options (A–D) from raw text.
+
+    The parser is robust to:
+      - Escaped newlines (\\n) embedded in a single line.
+      - Option markers like `A)`, `A.`, `(A)`, `A:` (case-insensitive).
+      - Multi-line option texts.
+      - Code-fence wrappers (e.g., ```question format).
+
+    Args:
+        question_text: Full question text.
+
+    Returns:
+        Tuple[str, List[Optional[str]]]:
+            stem, [optA, optB, optC, optD]
+            Missing options are returned as None.
+    """
+    if _is_missing(question_text):
+        return "", [None, None, None, None]
+
+    raw = _normalize(str(question_text))
+    if not raw:
+        return "", [None, None, None, None]
+
+    # Identify the first option start; everything before is stem.
+    # We scan line-by-line to avoid false positives mid-line.
+    lines = raw.split("\n")
+
+    # Find indices where options start
+    matches = []
+    for idx, line in enumerate(lines):
+        m = _OPTION_START.match(line)
+        if m:
+            label = m.group("label").upper()
+            if "A" <= label <= "D":  
+                matches.append((idx, label))
+
+    if not matches:
+        # No explicit options found → entire text is stem
+        stem = " ".join(ln.strip() for ln in lines if ln.strip())
+        return stem, [None, None, None, None]
+
+    # Stem = lines before the first option block
+    first_opt_idx = matches[0][0]
+    stem = " ".join(ln.strip() for ln in lines[:first_opt_idx] if ln.strip()).strip()
+
+    # Build segments per option by consuming until next option start
+    # Map label -> concatenated text
+    option_texts: dict[str, str] = {}
+
+    # Add sentinel end index to simplify slicing
+    option_spans = [(idx, label) for idx, label in matches]
+    option_spans.append((len(lines), None))  # end sentinel
+
+    for (start_idx, label), (end_idx, _) in zip(option_spans[:-1], option_spans[1:]):
+        # Remove the marker from the starting line
+        line0 = _OPTION_START.sub("", lines[start_idx], count=1).strip()
+        chunk_lines = [line0] if line0 else []
+        # Include the lines until (but not including) the next option
+        for ln in lines[start_idx + 1 : end_idx]:
+            chunk_lines.append(ln.strip())
+        # Join and normalize internal whitespace
+        text = " ".join(x for x in chunk_lines if x).strip()
+        if text:
+            option_texts[label] = text
+        else:
+            option_texts[label] = ""
+
+    # Prepare A–D only; if fewer present, fill with None
+    ordered = []
+    for lbl in ("A", "B", "C", "D"):
+        val = option_texts.get(lbl)
+        if val is None:
+            ordered.append(None)
+        else:
+            ordered.append(val if val != "" else None)
+
+    return stem, ordered
+
+
+
+def extract_correct_answer_letter(answer_text: object) -> Optional[str]:
+    """
+    Extract the correct answer letter (A, B, C, or D) from answer text.
+
+    Accepts common variants such as: "A) Text", "A. Text", "(B) Text",
+    "Answer: C", "correct answer - d) Text". Returns None if not found.
+
+    Args:
+        answer_text: Raw answer text, e.g., "A) Some answer text".
+
+    Returns:
+        The uppercase letter "A" | "B" | "C" | "D", or None if not detected.
+    """
+    # Robust missing checks without requiring pandas
+    if answer_text is None:
+        return None
+    if isinstance(answer_text, float) and math.isnan(answer_text):
+        return None
+
+    s = str(answer_text).strip()
+    if not s or s.lower() in {"nan", "none", "null"}:
+        return None
+
+    # Handle escaped newlines from CSVs (e.g., "A) foo\\nbar")
+    s = s.replace("\\n", "\n").splitlines()[0].strip()
+
+    # Primary: label at the start (optionally with "Answer:" prefix)
+    m = _ANSWER_LETTER_RE.match(s)
+    if m:
+        return m.group("letter").upper()
+
+    # Fallback: search anywhere for "...Answer: X..." pattern
+    m2 = re.search(r"(?i)\b(?:correct\s*)?answer\s*[:\-]\s*\(?\s*([A-D])\s*\)?", s)
+    return m2.group(1).upper() if m2 else None
+
+

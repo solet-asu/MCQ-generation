@@ -22,6 +22,10 @@ dependencies = [
     "python-dotenv",
     "spacy",
     "python-Levenshtein",
+        
+    # for cosine_similarity_analysis
+    "sentence-transformers>=2.6.1",
+    "torch>=2.2",
 ]
 
 [tool.setuptools]
