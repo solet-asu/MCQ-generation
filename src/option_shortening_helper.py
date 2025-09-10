@@ -85,7 +85,7 @@ def _normalize_options(opts: Sequence[Optional[str]]) -> List[str]:
     return safe
 
 
-def syntactic_analysis(
+async def syntactic_analysis(
         invocation_id:str,
         model: str = "gpt-4o", 
         temperature: float =0.3,
@@ -125,7 +125,7 @@ def syntactic_analysis(
         user_prompt=user_prompt
     )
     
-    generated_text = syntactic_analyzer.completion_generation()
+    generated_text = await syntactic_analyzer.completion_generation()
     syntactic_analysis_metadata = syntactic_analyzer.get_metadata()
     syntactic_analysis_metadata.update({
         "invocation_id": invocation_id,
@@ -189,7 +189,7 @@ def calculate_length_range(options: Sequence[Optional[str]]) -> Tuple[int, int]:
     return (min_target, max_target)
 
 
-def generate_candidate_short_options(
+async def generate_candidate_short_options(
     invocation_id: str,
     model: str, 
     options: List[str],
@@ -235,10 +235,10 @@ def generate_candidate_short_options(
         )
 
     # LLM call
-    agent = Agent(model=model, system_prompt=system_prompt, user_prompt=user_prompt)
-    generated_text = agent.completion_generation()
+    candidate_generator = Agent(model=model, system_prompt=system_prompt, user_prompt=user_prompt)
+    generated_text = await candidate_generator.completion_generation()
 
-    meta = agent.get_metadata() or {}
+    meta = candidate_generator.get_metadata() or {}
     meta.update({
         "invocation_id": invocation_id,
         "option_to_shorten": option_to_shorten,
@@ -309,7 +309,7 @@ def cosine_similarity_analysis(original_text: str, shortened_text: str, model: O
         return None
 
 # select best candidate
-def select_best_candidate(
+async def select_best_candidate(
     invocation_id: str,
     model: str,
     options: List[str],
@@ -405,9 +405,9 @@ def select_best_candidate(
         )
 
     # ---- LLM call ----
-    agent = Agent(model=model, system_prompt=system_prompt, user_prompt=user_prompt)
-    generated_text = agent.completion_generation()
-    meta = agent.get_metadata() or {}
+    candidate_selector = Agent(model=model, system_prompt=system_prompt, user_prompt=user_prompt)
+    generated_text = await candidate_selector.completion_generation()
+    meta = candidate_selector.get_metadata() or {}
     meta.update({
         "invocation_id": invocation_id,
         "option_to_shorten": option_to_shorten,

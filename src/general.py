@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 from typing import List, Union, Dict, Optional, Tuple
 import json
@@ -6,7 +7,6 @@ import csv
 import pandas as pd
 import math
 import re
-from __future__ import annotations
 
 
 # Configure logging

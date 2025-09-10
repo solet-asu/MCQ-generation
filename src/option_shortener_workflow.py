@@ -1,9 +1,9 @@
 from typing import Dict, Tuple
 from src.general import extract_mcq_components, extract_correct_answer_letter
-from option_shortening_helper import identify_longer_options, syntactic_analysis, calculate_length_range, generate_candidate_short_options, select_best_candidate, update_mcq_with_new_option
+from src.option_shortening_helper import identify_longer_options, syntactic_analysis, calculate_length_range, generate_candidate_short_options, select_best_candidate, update_mcq_with_new_option
 import json
 
-def check_and_shorten_long_option(invocation_id:str, mcq:str, model:str="gpt-4o")->Tuple[str, Dict]:
+async def check_and_shorten_long_option(invocation_id:str, mcq:str, model:str="gpt-4o")->Tuple[str, Dict]:
     # step 1: find the options 
     question, options = extract_mcq_components(mcq)
     correct_answer_letter = extract_correct_answer_letter(mcq)
@@ -16,7 +16,7 @@ def check_and_shorten_long_option(invocation_id:str, mcq:str, model:str="gpt-4o"
     input_tokens_accumulated = 0
     output_tokens_accumulated = 0
     # step3: if so, first analyze the syntactic structure of the options 
-    identified_rule_meta = syntactic_analysis(
+    identified_rule_meta = await syntactic_analysis(
         invocation_id=invocation_id,
         model=model,
         temperature=0.3,
@@ -31,7 +31,7 @@ def check_and_shorten_long_option(invocation_id:str, mcq:str, model:str="gpt-4o"
 
     # step5: shorten the longer option using the option shortener model to generate 5 candidates
 
-    shortened_options_candidates_meta = generate_candidate_short_options(
+    shortened_options_candidates_meta = await generate_candidate_short_options(
         invocation_id=invocation_id,
         model=model,
         options=options,
@@ -58,7 +58,7 @@ def check_and_shorten_long_option(invocation_id:str, mcq:str, model:str="gpt-4o"
     
     # step6: use the option ranker model to pick the best candidate, if none is good enough, keep the original option.
 
-    candidate_selection_meta = select_best_candidate(
+    candidate_selection_meta = await select_best_candidate(
         invocation_id=invocation_id,
         model=model,
         options=options,
