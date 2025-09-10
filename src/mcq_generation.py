@@ -7,6 +7,7 @@ from src.agent import Agent
 from src.general import *
 from src.database_handler import *
 from src.evaluator import generate_evaluation
+from src.option_shortener_workflow import check_and_shorten_long_option
 import asyncio
 import json
 
@@ -130,7 +131,7 @@ async def generate_mcq(
             mcq_extracted = extract_output(generated_text, item="QUESTION")
             if mcq_extracted:
                 logger.info(f"MCQ extracted on try {generation_try}.")
-                mcq_metadata["mcq"] = mcq_extracted
+                mcq_metadata["mcq"] = mcq_extracted #TODO need to move this somewhere done the line
                 # Check for valid options (A-D)
                 if _has_all_four_options(mcq_extracted):
                     logger.info(f"Valid MCQ generated on try {generation_try}.")
@@ -141,7 +142,7 @@ async def generate_mcq(
                     )
             else:
                 logger.warning(f"Falling back to MCQ agent (try {generation_try}).")
-                mcq_metadata["mcq"] = await extract_mcq_with_agent(generated_text, model=model)
+                mcq_metadata["mcq"] = await extract_mcq_with_agent(generated_text, model=model) #TODO need to move this somewhere done the line
                 used_mcq_extractor = True
                 # Validate again after extractor
                 if not _has_all_four_options(mcq_metadata["mcq"]):
@@ -176,6 +177,17 @@ async def generate_mcq(
             mcq_metadata["mcq_answer"] = _normalize_answer(
                 await extract_answer_with_agent(source_text, model=model)
             )
+        
+        # Use the shorten workflow to check and shorten long options if needed
+        updated_mcq, updated_mcq_answer, token_usage = await check_and_shorten_long_option(
+            invocation_id=invocation_id,
+            mcq=mcq_metadata.get("mcq", ""),
+            model=model,
+        )
+        mcq_metadata["mcq"] = updated_mcq
+        # update the answer if needed. 
+        if token_usage:
+            mcq_metadata["mcq_answer"] = updated_mcq_answer
 
         # Evaluate the generated question
         evaluation_meta = await generate_evaluation(

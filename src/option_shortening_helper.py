@@ -557,3 +557,26 @@ def update_mcq_with_new_option(mcq: str, shortened_option: str, option_index: in
     nl = "\r\n" if "\r\n" in mcq else "\n"
     return question.rstrip() + nl + nl + (nl + nl).join(f"{letters[i]}) {options[i].strip()}" for i in range(4))
 
+
+def format_answer_from_letter(letter: Optional[str], options: Sequence[Optional[str]]) -> str:
+    """Return 'X) <text>' for the given letter using options, or '' if unavailable.
+
+    - Normalizes options to exactly 4 strings (A–D).
+    - Trims extra spaces; returns '' if letter invalid or text missing.
+    """
+    if not letter:
+        return ""
+    L = letter.strip().upper()
+    if L not in "ABCD":
+        return ""
+    # Reuse internal normalizer
+    try:
+        opts = _normalize_options(options)
+    except NameError:
+        # Fallback if moved: normalize defensively
+        opts = [ (o or "").strip() for o in (options or [])[:4] ]
+        while len(opts) < 4:
+            opts.append("")
+    idx = "ABCD".index(L)
+    text = (opts[idx] or "").strip()
+    return f"{L}) {text}" if text else ""
