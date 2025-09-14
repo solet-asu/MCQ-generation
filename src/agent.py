@@ -30,6 +30,8 @@ class Agent(BaseModel):
     # Optional
     system_prompt: Optional[str] = None
     user_prompt: Optional[str] = None
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
     most_recent_completion: Optional[str] = None
     most_recent_execution_time: Optional[timedelta] = None
     input_tokens: Optional[int] = None

@@ -50,6 +50,37 @@ def _normalize_answer(ans: str) -> str:
     return m.group(1) if m else ans.strip()
 
 
+def _normalize_answer_text(mcq_text: str, ans: str) -> str:
+    """
+    Preserve 'Letter + content' if present; otherwise map a bare letter to its option text.
+    Returns e.g., 'B) <option text>'.
+    """
+    if not isinstance(ans, str):
+        return "N/A"
+    s = ans.strip()
+
+    # Already 'B) something...'
+    m_full = re.match(r'^\s*([A-D])\)\s+(.+)$', s, flags=re.IGNORECASE | re.DOTALL)
+    if m_full:
+        letter, text = m_full.group(1).upper(), m_full.group(2).strip()
+        return f"{letter}) {text}"
+
+    # Only a letter -> map to option content from MCQ
+    m_letter = re.search(r'([A-D])', s.upper())
+    if m_letter:
+        letter = m_letter.group(1)
+        opt_match = re.search(
+            rf'^{letter}\)\s*(.*?)(?:\n(?=[A-D]\)\s)|\Z)',
+            mcq_text,
+            flags=re.MULTILINE | re.IGNORECASE | re.DOTALL
+        )
+        if opt_match:
+            return f"{letter}) {opt_match.group(1).strip()}"
+
+    # Fallback: return as-is
+    return s
+
+
 async def generate_mcq(
     invocation_id: str,
     model: str,
@@ -130,7 +161,7 @@ async def generate_mcq(
             mcq_extracted = extract_output(generated_text, item="QUESTION")
             if mcq_extracted:
                 logger.info(f"MCQ extracted on try {generation_try}.")
-                mcq_metadata["mcq"] = mcq_extracted #TODO need to move this somewhere done the line
+                mcq_metadata["mcq"] = mcq_extracted  # TODO need to move this somewhere done the line
                 # Check for valid options (A-D)
                 if _has_all_four_options(mcq_extracted):
                     logger.info(f"Valid MCQ generated on try {generation_try}.")
@@ -141,7 +172,7 @@ async def generate_mcq(
                     )
             else:
                 logger.warning(f"Falling back to MCQ agent (try {generation_try}).")
-                mcq_metadata["mcq"] = await extract_mcq_with_agent(generated_text, model=model) #TODO need to move this somewhere done the line
+                mcq_metadata["mcq"] = await extract_mcq_with_agent(generated_text, model=model)  # TODO need to move this somewhere done the line
                 used_mcq_extractor = True
                 # Validate again after extractor
                 if not _has_all_four_options(mcq_metadata["mcq"]):
@@ -168,15 +199,18 @@ async def generate_mcq(
             answer_extracted = extract_output(generated_text, item="ANSWER")
         if answer_extracted:
             logger.info("Answer extracted successfully.")
-            mcq_metadata["mcq_answer"] = _normalize_answer(answer_extracted)
+            mcq_metadata["mcq_answer"] = _normalize_answer_text(
+                mcq_metadata.get("mcq", ""), answer_extracted
+            )
         else:
             logger.warning("Falling back to answer agent.")
             # Use generated_text if available; otherwise use mcq text
             source_text = generated_text if generated_text else mcq_metadata["mcq"]
-            mcq_metadata["mcq_answer"] = _normalize_answer(
-                await extract_answer_with_agent(source_text, model=model)
+            raw_ans = await extract_answer_with_agent(source_text, model=model)
+            mcq_metadata["mcq_answer"] = _normalize_answer_text(
+                mcq_metadata.get("mcq", ""), raw_ans
             )
-        
+
         # Use the shorten workflow to check and shorten long options if needed
         updated_mcq, updated_mcq_answer, token_usage = await check_and_shorten_long_option(
             invocation_id=invocation_id,
@@ -185,9 +219,9 @@ async def generate_mcq(
             model=model,
         )
         mcq_metadata["mcq"] = updated_mcq
-        # update the answer if needed. 
+        # update the answer if needed.
         if token_usage:
-            mcq_metadata["mcq_answer"] = updated_mcq_answer
+            mcq_metadata["mcq_answer"] = _normalize_answer_text(updated_mcq, updated_mcq_answer)
 
         # Evaluate the generated question
         evaluation_meta = await generate_evaluation(
@@ -215,6 +249,7 @@ async def generate_mcq(
             else:
                 logger.error(f"Unexpected type for evaluation_meta: {type(evaluation_meta)}")
                 evaluation_meta_dict = {}
+
             if evaluation_meta_dict:
                 status = evaluation_meta_dict.get("evaluation")
                 if status == "YES":
@@ -226,7 +261,9 @@ async def generate_mcq(
                     if revised_mcq:
                         mcq_metadata["mcq"] = revised_mcq
                     if revised_answer:
-                        mcq_metadata["mcq_answer"] = _normalize_answer(revised_answer)
+                        mcq_metadata["mcq_answer"] = _normalize_answer_text(
+                            mcq_metadata.get("mcq", ""), revised_answer
+                        )
                 elif status == "NO":
                     logger.info(f"Evaluation failed on attempt {attempt}/{max_attempt}")
                     if attempt < max_attempt:
