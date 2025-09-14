@@ -51,12 +51,13 @@ system_prompt: |
   - Select the candidate with the highest weighted score
   - In case of ties, prioritize meaning preservation
 
-  [OUTPUT]:
+  [OUTPUT FORMAT]:
   Provide a detailed evaluation for each candidate and your final selection in the following JSON format:
     {
     "evaluation_summary": "Summary of evaluations and reasoning for each candidate following the criteria",
     "selection_decision":"selected candidate (JUST THE CONTENT) or REJECT if none are acceptable"
     }
+   **IMPORTANT**: Return ONLY a JSON object matching the OUTPUT FORMAT section. No prose, no explanations, no code fences.
 
 
 user_prompt: |

@@ -1,16 +1,47 @@
+from __future__ import annotations
 import os
-from typing import List, Union, Dict, Optional, Tuple
+from typing import Any, List, Union, Dict, Optional, Tuple
 import json
 import logging
 import csv
 import pandas as pd
 import math
 import re
-from __future__ import annotations
-
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+_JSON_FENCE = re.compile(r"```json\s*(.*?)\s*```", re.IGNORECASE | re.DOTALL)
+_ANY_FENCE  = re.compile(r"```\s*(.*?)\s*```", re.DOTALL)
+_START_TOKEN = re.compile(r"[{\[]")
+
+_OPTION_START = re.compile(
+    r"""(?imx)            # i:ignorecase, m:multiline, x:verbose
+    ^\s*                  # start of line, optional leading space
+    (?:\(|\[)?            # optional opening paren/bracket
+    (?P<label>[A-D])      # capture A.D only
+    (?:\)|\])?            # optional closing paren/bracket
+    \s*                   # optional space
+    (?:[.:)\-])?          # common delimiters after label: '.', ':', ')', '-'
+    \s+                   # at least one space before the text
+    """
+)
+
+_ANSWER_LETTER_RE = re.compile(
+    r"""(?ix)            # i: ignore case, x: verbose
+    ^\s*
+    (?: (?:correct\s*)?answer \s*[:\-]\s* )?  # optional "Answer:" or "correct answer -"
+    (?:\(|\[)?                               # optional opening paren/bracket
+    (?P<letter>[A-D])                        # capture A–D only
+    (?:\)|\])?                               # optional closing paren/bracket
+    \s*
+    (?:[.:)\-])?                             # optional delimiter after label
+    """,
+)
+
+_CODE_FENCE_LINE = re.compile(r"^\s*```.*$")
+
+
 
 def get_files_in_directory(directory_path: str) -> List[str]:
     """
@@ -117,38 +148,90 @@ def dict_check_and_convert(obj: Union[str, dict]) -> dict:
         print(f"Unsupported input type: {type(obj)}. Expected str or dict.")
         return {}
     
+def _try_load_obj(snippet: str) -> Optional[Dict[str, Any]]:
+    try:
+        value = json.loads(snippet)
+        return value if isinstance(value, dict) else None
+    except json.JSONDecodeError:
+        return None
 
-
-
-def extract_json_string(text: str) -> Dict:
+def extract_json_string(text: str) -> Dict[str, Any]:
     """
-    Extract a valid JSON object from a string that may contain extra content
-    before or after the actual JSON. Returns the parsed JSON object as a dict.
+    Extract the first JSON object (dict) from noisy LLM output.
+    Order:
+      1) Try ```json fenced blocks
+      2) Try any ``` fenced blocks
+      3) Scan full text with JSONDecoder.raw_decode starting at each '{' or '['
+         (continues scanning until it finds a JSON object)
+    Raises ValueError if none is found.
+    """
+    if not isinstance(text, str):
+        raise TypeError("text must be a str")
+
+    # Strip BOM / zero-width space that sometimes appear in LLM output
+    text = text.lstrip("\ufeff").replace("\u200b", "")
+
+    # 1) Prefer explicit JSON fences
+    for m in _JSON_FENCE.finditer(text):
+        obj = _try_load_obj(m.group(1).strip())
+        if obj is not None:
+            return obj
+
+    # 2) Fall back to any fenced code block
+    for m in _ANY_FENCE.finditer(text):
+        obj = _try_load_obj(m.group(1).strip())
+        if obj is not None:
+            return obj
+
+    # 3) Scan raw text, decoding from each '{' or '['; keep searching until a dict is found
+    decoder = json.JSONDecoder()
+    i, n = 0, len(text)
+    while i < n:
+        m = _START_TOKEN.search(text, i)
+        if not m:
+            break
+        start = m.start()
+        try:
+            value, end = decoder.raw_decode(text, start)
+        except json.JSONDecodeError:
+            i = start + 1
+            continue
+        if isinstance(value, dict):
+            return value
+        i = end  # not an object; continue scanning after this JSON value
+
+    raise ValueError("src.general report: No valid JSON object found in input.")
+
+
+# def extract_json_string(text: str) -> Dict:
+#     """
+#     Extract a valid JSON object from a string that may contain extra content
+#     before or after the actual JSON. Returns the parsed JSON object as a dict.
     
-    Raises ValueError if no valid JSON object can be found.
-    """
-    start = text.find('{')
-    if start == -1:
-        logging.error("No JSON object found in input string")
-        raise ValueError("No JSON object found in input string")
+#     Raises ValueError if no valid JSON object can be found.
+#     """
+#     start = text.find('{')
+#     if start == -1:
+#         logging.error("No JSON object found in input string")
+#         raise ValueError("No JSON object found in input string")
 
-    # Try to find the matching closing brace
-    brace_count = 0
-    for i in range(start, len(text)):
-        if text[i] == '{':
-            brace_count += 1
-        elif text[i] == '}':
-            brace_count -= 1
-            if brace_count == 0:
-                json_str = text[start:i+1]
-                try:
-                    return json.loads(json_str)
-                except json.JSONDecodeError as e:
-                    logging.error(f"Invalid JSON content: {e}")
-                    raise ValueError(f"Invalid JSON content: {e}")
+#     # Try to find the matching closing brace
+#     brace_count = 0
+#     for i in range(start, len(text)):
+#         if text[i] == '{':
+#             brace_count += 1
+#         elif text[i] == '}':
+#             brace_count -= 1
+#             if brace_count == 0:
+#                 json_str = text[start:i+1]
+#                 try:
+#                     return json.loads(json_str)
+#                 except json.JSONDecodeError as e:
+#                     logging.error(f"Invalid JSON content: {e}")
+#                     raise ValueError(f"Invalid JSON content: {e}")
 
-    logging.error("Could not find a complete JSON object in the input string")
-    raise ValueError("Could not find a complete JSON object in the input string")
+#     logging.error("Could not find a complete JSON object in the input string")
+#     raise ValueError("Could not find a complete JSON object in the input string")
 
 
 def combine_csv_files(directory_path: str, output_file: str) -> None:
@@ -203,33 +286,6 @@ def remove_duplicates_by_column(input_file: str, column_name: str, output_file: 
     except Exception as e:
         print(f"An error occurred: {e}")
 
-
-
-_OPTION_START = re.compile(
-    r"""(?imx)            # i:ignorecase, m:multiline, x:verbose
-    ^\s*                  # start of line, optional leading space
-    (?:\(|\[)?            # optional opening paren/bracket
-    (?P<label>[A-D])      # capture A.D only
-    (?:\)|\])?            # optional closing paren/bracket
-    \s*                   # optional space
-    (?:[.:)\-])?          # common delimiters after label: '.', ':', ')', '-'
-    \s+                   # at least one space before the text
-    """
-)
-
-_ANSWER_LETTER_RE = re.compile(
-    r"""(?ix)            # i: ignore case, x: verbose
-    ^\s*
-    (?: (?:correct\s*)?answer \s*[:\-]\s* )?  # optional "Answer:" or "correct answer -"
-    (?:\(|\[)?                               # optional opening paren/bracket
-    (?P<letter>[A-D])                        # capture A–D only
-    (?:\)|\])?                               # optional closing paren/bracket
-    \s*
-    (?:[.:)\-])?                             # optional delimiter after label
-    """,
-)
-
-_CODE_FENCE_LINE = re.compile(r"^\s*```.*$")
 
 def _is_missing(value: object) -> bool:
     # Robust "missing" check without pandas

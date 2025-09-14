@@ -1,6 +1,8 @@
 from typing import Any, List
 import json, ast, re, logging
+
 logger = logging.getLogger(__name__)
+
 _CAND_KEY_RE = re.compile(r"^candidate[_\s\-]?(\d+)$", re.IGNORECASE)
 
 def normalize_candidates(raw: Any, n: int = 5, *, allow_python_literal: bool = False) -> List[str]:

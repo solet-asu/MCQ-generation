@@ -1,15 +1,11 @@
-import re
 import logging
 from typing import Dict, Optional
 from src.prompt_fetch import get_prompts
 from src.agent import Agent
 from src.general import *
 from src.database_handler import *
-import asyncio
-import json
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 async def generate_evaluation(invocation_id: str, 
@@ -39,7 +35,7 @@ async def generate_evaluation(invocation_id: str,
         user_prompt=user_prompt
     )
     
-    generated_text = await evaluation_generation_agent.completion_generation()
+    generated_text = await evaluation_generation_agent.completion_generation(response_format={"type": "json_object"})
     evaluation_metadata = evaluation_generation_agent.get_metadata()
     evaluation_metadata.update({
         "invocation_id": invocation_id,

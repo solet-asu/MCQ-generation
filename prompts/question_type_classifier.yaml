@@ -66,6 +66,8 @@ system_prompt: |
       "reasoning": "Your reasoning for the classification.",
       "classification": "factual question" or "inferential question" or "main idea question" or "unidentified type"
     }
+    **IMPORTANT**: Return ONLY a JSON object matching the OUTPUT FORMAT section. No prose, no explanations, no code fences.
+
 
 user_prompt: |
   Here is a multiple-choice question:

@@ -61,6 +61,8 @@ system_prompt: |
         "question": "the question stem and options",
         "correct_answer": "the correct answer option letter (A, B, C, or D) and the text of the correct answer"}
     }
+  **IMPORTANT**: Return ONLY a JSON object matching the JSON FORMAT specified above. No prose, no explanations, no code fences.
+
 
 
 

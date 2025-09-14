@@ -68,6 +68,8 @@ system_prompt: |
     - The number of facts and inferences should match the user's request. For example, if the user requests 3 facts, include "fact1", "fact2", and "fact3".
     - If no facts or inferences are requested, the values for the "facts" or "inferences" field should be an empty object {}.
     - The "chunk" field indicates the source of the facts or inferences in the text. The value is a list of chunk labels obtained from the html tags, such as “chunk1”, “chunk2”. Sometimes an inference may be from multiple chunks, such as [“chunk1”, “chunck2”].
+    - Return ONLY a JSON object matching the JSON format specified above. No prose, no explanations, no code fences.
+
 
   Step5: Self-critique your response
     After completing the task, review your response to ensure it meets the requirements. Revise your output if necessary. 

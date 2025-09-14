@@ -55,6 +55,8 @@ system_prompt: |
     "revised_mcq": "The revised multiple-choice question. Otherwise, this field should be empty."
     "revised_answer": "The revised correct answer if the original answer does not meet the criteria. Otherwise, this field should be empty."
   }
+  **IMPORTANT**: Return ONLY a JSON object matching the OUTPUT FORMAT section. No prose, no explanations, no code fences.
+
 
 
 user_prompt: |

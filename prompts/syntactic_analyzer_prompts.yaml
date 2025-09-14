@@ -46,6 +46,8 @@ system_prompt: |
     "syntactic_rule": "Your identified syntactic rule here. If no clear pattern, state 'No clear common structure identified.'",
     "confidence": "high/medium/low"
     }
+    **IMPORTANT**: Return ONLY a JSON object matching the OUTPUT FORMAT section. No prose, no explanations, no code fences.
+
 
 
 user_prompt: |
