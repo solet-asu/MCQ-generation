@@ -12,7 +12,6 @@ import asyncio
 import json
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 QUESTION_TYPE_PROMPT_MAP = {
@@ -182,6 +181,7 @@ async def generate_mcq(
         updated_mcq, updated_mcq_answer, token_usage = await check_and_shorten_long_option(
             invocation_id=invocation_id,
             mcq=mcq_metadata.get("mcq", ""),
+            mcq_answer=mcq_metadata.get("mcq_answer", ""),
             model=model,
         )
         mcq_metadata["mcq"] = updated_mcq

@@ -15,6 +15,10 @@ from src.option_shortening_helper import (
     format_answer_from_letter,   # builds "X) text" from letter + options
 )
 
+import logging
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 async def check_and_shorten_long_option(
     invocation_id: str,
@@ -29,16 +33,20 @@ async def check_and_shorten_long_option(
       - Candidate normalization happens **in the helper**.
       - This workflow avoids redundant JSON parsing / re-normalization.
     """
+    
     # ---- Step 1: Parse MCQ and current answer ----
     question, options = extract_mcq_components(mcq)
     correct_answer_letter = extract_correct_answer_letter(mcq_answer)
     updated_mcq_answer = format_answer_from_letter(correct_answer_letter, options)
+    log_extra = {"invocation_id": invocation_id}
 
     # ---- Step 2: Detect noticeably longer option ----
     longer_option_index, longer_option_text = identify_longer_options(options)
     if not longer_option_text:
+        logging.info("No noticeably longer option in this question", extra=log_extra)
         return mcq, updated_mcq_answer, {}  # nothing to do
-
+        
+    logging.info("Noticeably longer option DETECTED in this question")
     input_tokens_accumulated = 0
     output_tokens_accumulated = 0
 
@@ -102,6 +110,7 @@ async def check_and_shorten_long_option(
     output_tokens_accumulated += int(selection_meta.get("output_tokens") or 0)
 
     if not best_candidate:
+        logging.info("No candidate is chosen, falling back to the original question option", extra=log_extra)
         return mcq, updated_mcq_answer, {
             "input_tokens": input_tokens_accumulated,
             "output_tokens": output_tokens_accumulated,
@@ -113,6 +122,7 @@ async def check_and_shorten_long_option(
     # Re-parse options from updated text to ensure the answer string matches final rendering.
     _, updated_options = extract_mcq_components(updated_mcq)
     updated_mcq_answer = format_answer_from_letter(correct_answer_letter, updated_options)
+    logging.info("Noticeably longer option SHORTENED for this question", extra=log_extra)
 
     return updated_mcq, updated_mcq_answer, {
         "input_tokens": input_tokens_accumulated,

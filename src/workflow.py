@@ -35,7 +35,7 @@ async def question_generation_workflow(
     ranking_metadata_table_name: str = "ranking_metadata",
     workflow_metadata_table_name: str = "workflow_metadata",
     database_file: str = "../database/mcq_metadata.db",
-    concurrency: int = 30, # Max concurrent tasks for question generation
+    concurrency: int = 20, # Max concurrent tasks for question generation
 ) -> list[dict[str, Any]]:
     """
     Generate MCQs from `text` given desired counts per question type.
@@ -59,7 +59,6 @@ async def question_generation_workflow(
 
     # timing & timestamps
     t0 = time.perf_counter()
-    start_ts = datetime.now(timezone.utc).isoformat()
 
     logger.info("Workflow started", extra=log_extra)
 
@@ -125,17 +124,14 @@ async def question_generation_workflow(
     total_input_tokens = sum(int(item.get("input_tokens") or 0) for item in reformatted_questions)
     total_output_tokens = sum(int(item.get("output_tokens") or 0) for item in reformatted_questions)
 
-    end_ts = datetime.now(timezone.utc).isoformat()
     elapsed = time.perf_counter() - t0
 
     workflow_metadata = {
         "invocation_id": invocation_id,
         "output": json.dumps(reformatted_questions, ensure_ascii=False),
-        "execution_time_seconds": f"{elapsed:.6f}",
+        "execution_time": f"{elapsed:.6f}",
         "input_tokens": total_input_tokens,
         "output_tokens": total_output_tokens,
-        "timestamp_start": start_ts,
-        "timestamp_end": end_ts,
     }
 
     # Run blocking DB operations off the event loop

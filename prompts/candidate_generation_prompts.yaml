@@ -102,6 +102,7 @@ system_prompt: |
     "candidate_5": "shortened version5"
   }
   }
+  **IMPORTANT**: Return ONLY a JSON object matching the OUTPUT FORMAT section. No prose, no explanations, no code fences.
 
 
 user_prompt: |

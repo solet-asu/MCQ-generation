@@ -125,7 +125,7 @@ async def syntactic_analysis(
         user_prompt=user_prompt
     )
     
-    generated_text = await syntactic_analyzer.completion_generation()
+    generated_text = await syntactic_analyzer.completion_generation(response_format={"type": "json_object"})
     syntactic_analysis_metadata = syntactic_analyzer.get_metadata()
     syntactic_analysis_metadata.update({
         "invocation_id": invocation_id,
@@ -236,7 +236,7 @@ async def generate_candidate_short_options(
 
     # LLM call
     candidate_generator = Agent(model=model, system_prompt=system_prompt, user_prompt=user_prompt)
-    generated_text = await candidate_generator.completion_generation()
+    generated_text = await candidate_generator.completion_generation(response_format={"type": "json_object"})
 
     meta = candidate_generator.get_metadata() or {}
     meta.update({
@@ -406,7 +406,7 @@ async def select_best_candidate(
 
     # ---- LLM call ----
     candidate_selector = Agent(model=model, system_prompt=system_prompt, user_prompt=user_prompt)
-    generated_text = await candidate_selector.completion_generation()
+    generated_text = await candidate_selector.completion_generation(response_format={"type": "json_object"})
     meta = candidate_selector.get_metadata() or {}
     meta.update({
         "invocation_id": invocation_id,
