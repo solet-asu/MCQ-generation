@@ -7,6 +7,9 @@ import { FileText, Settings, Sparkles } from "lucide-react"
 import UploadPanel from "./UploadPanel"
 import ConfigPanel from "./ConfigPanel"
 import dynamic from "next/dynamic"
+import { useOverlay } from "./overlay-store"
+
+
 
 const QuestionsList = dynamic(() => import("./QuestionsList"), {
   ssr: false,
@@ -29,6 +32,10 @@ export default function HomeClient() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [inputMethod, setInputMethod] = useState("paste")
 
+  const { show, hide } = useOverlay()
+
+  
+
   // config state
   const [textBasedQuestions, setTextBasedQuestions] = useState(5)
   const [inferentialQuestions, setInferentialQuestions] = useState(3)
@@ -44,6 +51,7 @@ export default function HomeClient() {
   const canGenerate = (text.trim().length > 50 || !!uploadedFile) && totalQuestions > 0
 
   const handleGenerate = async () => {
+    show()
     setIsGenerating(true)
     try {
       const requestPayload = {
@@ -75,6 +83,7 @@ export default function HomeClient() {
 
       setQuestions(parsedQuestions)
       setIsGenerating(false)
+      hide()
 
       // scroll to questions
       setTimeout(() => {
@@ -231,35 +240,6 @@ export default function HomeClient() {
 
   return (
     <>
-      {isGenerating && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="text-center space-y-8">
-            <div className="relative">
-              <div className="w-32 h-32 mx-auto relative">
-                <div className="absolute inset-0 border-4 border-white/30 rounded-full animate-spin"></div>
-                <div className="absolute inset-4 bg-white/10 rounded-full animate-pulse"></div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Sparkles className="w-12 h-12 text-white animate-pulse" />
-                </div>
-              </div>
-            </div>
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-white">ReQUESTA is generating questions</h2>
-              <div className="flex items-center justify-center space-x-2">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "0s" }}></div>
-                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
-                </div>
-              </div>
-              <p className="text-white/80 max-w-md mx-auto">
-                Our AI is analyzing your text and crafting {totalQuestions} thoughtful questions...
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left: Text input */}
         <div className="lg:col-span-2">
