@@ -1,9 +1,20 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Sparkles, HelpCircle, ArrowLeft } from "lucide-react"
-import Link from "next/link"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Sparkles, HelpCircle, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 export default function FAQsPage() {
   const faqs = [
@@ -91,7 +102,7 @@ export default function FAQsPage() {
       answer:
         "We're continuously improving ReQUESTA based on user feedback. Planned features include support for additional question types, enhanced customization options, integration with learning management systems, and improved AI models for even better question quality.",
     },
-  ]
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -100,7 +111,11 @@ export default function FAQsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/">
-                <Button variant="ghost" size="sm" className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
                   <ArrowLeft className="h-4 w-4" />
                   Back to Generator
                 </Button>
@@ -110,12 +125,18 @@ export default function FAQsPage() {
                   <Sparkles className="h-5 w-5" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-asu-maroon">ReQUESTA</h1>
-                  <p className="text-muted-foreground">Academic Question Generator</p>
+                  <h1 className="text-2xl font-bold text-asu-maroon">
+                    ReQUESTA
+                  </h1>
+                  <p className="text-muted-foreground">
+                    Academic Question Generator
+                  </p>
                 </div>
               </div>
             </div>
-            <Badge className="bg-asu-gold text-black font-medium">ASU Unity</Badge>
+            <Badge className="bg-asu-gold text-black font-medium">
+              ASU Unity
+            </Badge>
           </div>
         </div>
       </header>
@@ -127,47 +148,77 @@ export default function FAQsPage() {
             <div className="flex items-center justify-center gap-2 mb-4">
               <HelpCircle className="h-8 w-8 text-asu-maroon" />
             </div>
-            <h1 className="text-4xl font-bold text-asu-maroon">Frequently Asked Questions</h1>
+            <h1 className="text-4xl font-bold text-asu-maroon">
+              Frequently Asked Questions
+            </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Find answers to common questions about ReQUESTA and how to get the most out of our AI-powered question
-              generator
+              Find answers to common questions about ReQUESTA and how to get the
+              most out of our AI-powered question generator
             </p>
           </div>
 
           {/* Quick Links */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-asu-maroon">Quick Navigation</CardTitle>
-              <CardDescription>Jump to the most commonly asked questions</CardDescription>
+              <CardTitle className="text-asu-maroon">
+                Quick Navigation
+              </CardTitle>
+              <CardDescription>
+                Jump to the most commonly asked questions
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                <Button variant="ghost" size="sm" className="justify-start h-auto p-2 text-left">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="justify-start h-auto p-2 text-left"
+                >
                   <a href="#what-is-requesta" className="text-sm">
                     What is ReQUESTA?
                   </a>
                 </Button>
-                <Button variant="ghost" size="sm" className="justify-start h-auto p-2 text-left">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="justify-start h-auto p-2 text-left"
+                >
                   <a href="#how-does-it-work" className="text-sm">
                     How does it work?
                   </a>
                 </Button>
-                <Button variant="ghost" size="sm" className="justify-start h-auto p-2 text-left">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="justify-start h-auto p-2 text-left"
+                >
                   <a href="#question-types" className="text-sm">
                     Question types
                   </a>
                 </Button>
-                <Button variant="ghost" size="sm" className="justify-start h-auto p-2 text-left">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="justify-start h-auto p-2 text-left"
+                >
                   <a href="#supported-formats" className="text-sm">
                     Supported formats
                   </a>
                 </Button>
-                <Button variant="ghost" size="sm" className="justify-start h-auto p-2 text-left">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="justify-start h-auto p-2 text-left"
+                >
                   <a href="#download-options" className="text-sm">
                     Download options
                   </a>
                 </Button>
-                <Button variant="ghost" size="sm" className="justify-start h-auto p-2 text-left">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="justify-start h-auto p-2 text-left"
+                >
                   <a href="#privacy-security" className="text-sm">
                     Privacy & Security
                   </a>
@@ -180,14 +231,20 @@ export default function FAQsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-asu-maroon">All Questions</CardTitle>
-              <CardDescription>Browse through all frequently asked questions about ReQUESTA</CardDescription>
+              <CardDescription>
+                Browse through all frequently asked questions about ReQUESTA
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Accordion type="single" collapsible className="w-full">
                 {faqs.map((faq) => (
                   <AccordionItem key={faq.id} value={faq.id} id={faq.id}>
-                    <AccordionTrigger className="text-left hover:text-asu-maroon">{faq.question}</AccordionTrigger>
-                    <AccordionContent className="text-muted-foreground leading-relaxed">{faq.answer}</AccordionContent>
+                    <AccordionTrigger className="text-left hover:text-asu-maroon">
+                      {faq.question}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-muted-foreground leading-relaxed">
+                      {faq.answer}
+                    </AccordionContent>
                   </AccordionItem>
                 ))}
               </Accordion>
@@ -197,8 +254,12 @@ export default function FAQsPage() {
           {/* Contact Section */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-asu-maroon">Still Have Questions?</CardTitle>
-              <CardDescription>Can't find what you're looking for? We're here to help!</CardDescription>
+              <CardTitle className="text-asu-maroon">
+                Still Have Questions?
+              </CardTitle>
+              <CardDescription>
+                Can't find what you're looking for? We're here to help!
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col sm:flex-row gap-4">
@@ -216,7 +277,8 @@ export default function FAQsPage() {
               </div>
               <div className="mt-4 p-4 bg-muted/30 rounded-lg">
                 <p className="text-sm text-muted-foreground text-center">
-                  For technical support or additional questions, please contact the ASU support team
+                  For technical support or additional questions, please contact
+                  the ASU support team
                 </p>
               </div>
             </CardContent>
@@ -224,5 +286,5 @@ export default function FAQsPage() {
         </div>
       </main>
     </div>
-  )
+  );
 }

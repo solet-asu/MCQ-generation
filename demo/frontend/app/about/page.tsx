@@ -1,8 +1,22 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Sparkles, FileText, Settings, Users, Target, Lightbulb, ArrowLeft } from "lucide-react"
-import Link from "next/link"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Sparkles,
+  FileText,
+  Settings,
+  Users,
+  Target,
+  Lightbulb,
+  ArrowLeft,
+} from "lucide-react";
+import Link from "next/link";
 
 export default function AboutPage() {
   return (
@@ -12,7 +26,11 @@ export default function AboutPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/">
-                <Button variant="ghost" size="sm" className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
                   <ArrowLeft className="h-4 w-4" />
                   Back to Generator
                 </Button>
@@ -22,12 +40,18 @@ export default function AboutPage() {
                   <Sparkles className="h-5 w-5" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-asu-maroon">ReQUESTA</h1>
-                  <p className="text-muted-foreground">Academic Question Generator</p>
+                  <h1 className="text-2xl font-bold text-asu-maroon">
+                    ReQUESTA
+                  </h1>
+                  <p className="text-muted-foreground">
+                    Academic Question Generator
+                  </p>
                 </div>
               </div>
             </div>
-            <Badge className="bg-asu-gold text-black font-medium">ASU Unity</Badge>
+            <Badge className="bg-asu-gold text-black font-medium">
+              ASU Unity
+            </Badge>
           </div>
         </div>
       </header>
@@ -37,9 +61,12 @@ export default function AboutPage() {
           {/* Hero Section */}
           <div className="text-center space-y-6">
             <div className="space-y-4">
-              <h1 className="text-4xl font-bold text-asu-maroon">About ReQUESTA</h1>
+              <h1 className="text-4xl font-bold text-asu-maroon">
+                About ReQUESTA
+              </h1>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Revolutionizing academic assessment through AI-powered question generation
+                Revolutionizing academic assessment through AI-powered question
+                generation
               </p>
             </div>
           </div>
@@ -54,13 +81,16 @@ export default function AboutPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-lg">
-                ReQUESTA empowers educators and students by transforming academic texts into high-quality, pedagogically
-                sound multiple-choice questions using advanced artificial intelligence.
+                ReQUESTA empowers educators and students by transforming
+                academic texts into high-quality, pedagogically sound
+                multiple-choice questions using advanced artificial
+                intelligence.
               </p>
               <p>
-                Our platform bridges the gap between content creation and assessment, making it easier for educators to
-                create meaningful evaluations while helping students engage more deeply with academic material through
-                thoughtfully crafted questions.
+                Our platform bridges the gap between content creation and
+                assessment, making it easier for educators to create meaningful
+                evaluations while helping students engage more deeply with
+                academic material through thoughtfully crafted questions.
               </p>
             </CardContent>
           </Card>
@@ -76,8 +106,9 @@ export default function AboutPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Advanced AI algorithms analyze academic texts to identify key concepts, relationships, and learning
-                  objectives for optimal question generation.
+                  Advanced AI algorithms analyze academic texts to identify key
+                  concepts, relationships, and learning objectives for optimal
+                  question generation.
                 </p>
               </CardContent>
             </Card>
@@ -91,8 +122,9 @@ export default function AboutPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Configure question types, difficulty levels, and cognitive complexity to match your specific
-                  educational goals and assessment needs.
+                  Configure question types, difficulty levels, and cognitive
+                  complexity to match your specific educational goals and
+                  assessment needs.
                 </p>
               </CardContent>
             </Card>
@@ -106,8 +138,9 @@ export default function AboutPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Generate text-based, inferential, and main idea questions that test different levels of comprehension
-                  and critical thinking skills.
+                  Generate text-based, inferential, and main idea questions that
+                  test different levels of comprehension and critical thinking
+                  skills.
                 </p>
               </CardContent>
             </Card>
@@ -116,8 +149,13 @@ export default function AboutPage() {
           {/* How It Works */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-asu-maroon">How ReQUESTA Works</CardTitle>
-              <CardDescription>Our streamlined process makes question generation simple and effective</CardDescription>
+              <CardTitle className="text-asu-maroon">
+                How ReQUESTA Works
+              </CardTitle>
+              <CardDescription>
+                Our streamlined process makes question generation simple and
+                effective
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-6 md:grid-cols-3">
@@ -127,7 +165,8 @@ export default function AboutPage() {
                   </div>
                   <h3 className="font-semibold">Input Your Text</h3>
                   <p className="text-sm text-muted-foreground">
-                    Upload documents or paste academic content directly into the platform
+                    Upload documents or paste academic content directly into the
+                    platform
                   </p>
                 </div>
                 <div className="text-center space-y-3">
@@ -145,7 +184,8 @@ export default function AboutPage() {
                   </div>
                   <h3 className="font-semibold">Generate & Export</h3>
                   <p className="text-sm text-muted-foreground">
-                    Review AI-generated questions and export in your preferred format
+                    Review AI-generated questions and export in your preferred
+                    format
                   </p>
                 </div>
               </div>
@@ -162,9 +202,11 @@ export default function AboutPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p>
-                ReQUESTA is developed by Arizona State University as part of our commitment to innovation in education
-                technology. Our interdisciplinary team combines expertise in artificial intelligence, educational
-                psychology, and user experience design.
+                ReQUESTA is developed by Arizona State University as part of our
+                commitment to innovation in education technology. Our
+                interdisciplinary team combines expertise in artificial
+                intelligence, educational psychology, and user experience
+                design.
               </p>
               <div className="flex items-center gap-4 pt-4">
                 <Badge className="bg-asu-gold text-black">ASU Innovation</Badge>
@@ -178,7 +220,10 @@ export default function AboutPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-asu-maroon">Get Started</CardTitle>
-              <CardDescription>Ready to transform your academic content into engaging questions?</CardDescription>
+              <CardDescription>
+                Ready to transform your academic content into engaging
+                questions?
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col sm:flex-row gap-4">
@@ -199,5 +244,5 @@ export default function AboutPage() {
         </div>
       </main>
     </div>
-  )
+  );
 }

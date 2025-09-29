@@ -1,10 +1,10 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Sparkles, Info, HelpCircle } from "lucide-react"
-import HomeClient from "./_components/HomeClient"
-import { OverlayProvider } from "./_components/overlay-store"
-import BlockingOverlay from "./_components/BlockingOverlay"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Sparkles, Info, HelpCircle } from "lucide-react";
+import HomeClient from "./_components/HomeClient";
+import { OverlayProvider } from "./_components/overlay-store";
+import BlockingOverlay from "./_components/BlockingOverlay";
 
 export default function HomePage() {
   return (
@@ -18,8 +18,12 @@ export default function HomePage() {
                   <Sparkles className="h-5 w-5" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-asu-maroon">ReQUESTA</h1>
-                  <p className="text-muted-foreground">Academic Question Generator</p>
+                  <h1 className="text-2xl font-bold text-asu-maroon">
+                    ReQUESTA
+                  </h1>
+                  <p className="text-muted-foreground">
+                    Academic Question Generator
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
@@ -45,7 +49,9 @@ export default function HomePage() {
                     </Button>
                   </Link>
                 </nav>
-                <Badge className="bg-asu-gold text-black font-medium">ASU Unity</Badge>
+                <Badge className="bg-asu-gold text-black font-medium">
+                  ASU Unity
+                </Badge>
               </div>
             </div>
           </div>
@@ -55,8 +61,8 @@ export default function HomePage() {
             <HomeClient />
           </div>
         </main>
-      <BlockingOverlay message="ReQUESTA is generating questions" />
+        <BlockingOverlay message="ReQUESTA is generating questions" />
       </OverlayProvider>
     </div>
-  )
+  );
 }

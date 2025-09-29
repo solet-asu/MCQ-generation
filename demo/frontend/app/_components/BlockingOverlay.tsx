@@ -1,26 +1,26 @@
-"use client"
+"use client";
 
-import { useEffect, useRef } from "react"
-import { Sparkles } from "lucide-react"
-import ClientPortal from "./ClientPortal"
-import { useLockBodyScroll } from "./useLockBodyScroll"
-import { useOverlay } from "./overlay-store"
+import { useEffect, useRef } from "react";
+import { Sparkles } from "lucide-react";
+import ClientPortal from "./ClientPortal";
+import { useLockBodyScroll } from "./useLockBodyScroll";
+import { useOverlay } from "./overlay-store";
 
 export default function BlockingOverlay({ message }: { message: string }) {
-  const { open, lastActiveEl } = useOverlay()
-  useLockBodyScroll(open)
+  const { open, lastActiveEl } = useOverlay();
+  useLockBodyScroll(open);
 
-  const overlayRef = useRef<HTMLDivElement | null>(null)
+  const overlayRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (open) {
-      overlayRef.current?.focus()
+      overlayRef.current?.focus();
     } else {
-      lastActiveEl.current?.focus?.()
+      lastActiveEl.current?.focus?.();
     }
-  }, [open, lastActiveEl])
+  }, [open, lastActiveEl]);
 
-  if (!open) return null
+  if (!open) return null;
 
   return (
     <ClientPortal>
@@ -55,17 +55,31 @@ export default function BlockingOverlay({ message }: { message: string }) {
             <h2 className="text-2xl font-bold text-white">{message}</h2>
 
             {/* the dots */}
-            <div className="flex items-center justify-center gap-2" aria-hidden="true">
-              <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-              <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-              <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+            <div
+              className="flex items-center justify-center gap-2"
+              aria-hidden="true"
+            >
+              <div
+                className="w-2 h-2 bg-white rounded-full animate-bounce"
+                style={{ animationDelay: "0ms" }}
+              />
+              <div
+                className="w-2 h-2 bg-white rounded-full animate-bounce"
+                style={{ animationDelay: "150ms" }}
+              />
+              <div
+                className="w-2 h-2 bg-white rounded-full animate-bounce"
+                style={{ animationDelay: "300ms" }}
+              />
             </div>
             <span className="sr-only">Loading…</span>
 
-            <p className="text-white/75 text-sm">Analyzing your text and crafting questions…</p>
+            <p className="text-white/75 text-sm">
+              Analyzing your text and crafting questions…
+            </p>
           </div>
         </div>
       </div>
     </ClientPortal>
-  )
+  );
 }

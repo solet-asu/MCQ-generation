@@ -1,31 +1,37 @@
-"use client"
+"use client";
 
-import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Settings, CheckCircle, Zap, Clock } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Settings, CheckCircle, Zap, Clock } from "lucide-react";
 
 type Props = {
-  textBasedQuestions: number
-  setTextBasedQuestions: (n: number) => void
-  inferentialQuestions: number
-  setInferentialQuestions: (n: number) => void
-  includeMainIdea: boolean
-  setIncludeMainIdea: (b: boolean) => void
-  selectedModel: string
-  setSelectedModel: (v: string) => void
-  qualityLevel: string
-  setQualityLevel: (v: string) => void
+  textBasedQuestions: number;
+  setTextBasedQuestions: (n: number) => void;
+  inferentialQuestions: number;
+  setInferentialQuestions: (n: number) => void;
+  includeMainIdea: boolean;
+  setIncludeMainIdea: (b: boolean) => void;
+  selectedModel: string;
+  setSelectedModel: (v: string) => void;
+  qualityLevel: string;
+  setQualityLevel: (v: string) => void;
 
-  totalQuestions: number
-  canGenerate: boolean
-  isGenerating: boolean
-  onGenerate: () => void
-}
+  totalQuestions: number;
+  canGenerate: boolean;
+  isGenerating: boolean;
+  onGenerate: () => void;
+};
 
 export default function ConfigPanel(props: Props) {
   const {
@@ -43,7 +49,7 @@ export default function ConfigPanel(props: Props) {
     canGenerate,
     isGenerating,
     onGenerate,
-  } = props
+  } = props;
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -61,11 +67,17 @@ export default function ConfigPanel(props: Props) {
                 type="number"
                 min="0"
                 value={textBasedQuestions}
-                onChange={(e) => setTextBasedQuestions(Math.max(0, Number.parseInt(e.target.value) || 0))}
+                onChange={(e) =>
+                  setTextBasedQuestions(
+                    Math.max(0, Number.parseInt(e.target.value) || 0)
+                  )
+                }
                 className="w-16 h-8 custom-input"
               />
             </div>
-            <p className="text-xs text-muted-foreground">Questions directly answered from the text</p>
+            <p className="text-xs text-muted-foreground">
+              Questions directly answered from the text
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -78,11 +90,17 @@ export default function ConfigPanel(props: Props) {
                 type="number"
                 min="0"
                 value={inferentialQuestions}
-                onChange={(e) => setInferentialQuestions(Math.max(0, Number.parseInt(e.target.value) || 0))}
+                onChange={(e) =>
+                  setInferentialQuestions(
+                    Math.max(0, Number.parseInt(e.target.value) || 0)
+                  )
+                }
                 className="w-16 h-8 custom-input"
               />
             </div>
-            <p className="text-xs text-muted-foreground">Questions requiring analysis beyond the text</p>
+            <p className="text-xs text-muted-foreground">
+              Questions requiring analysis beyond the text
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -96,7 +114,9 @@ export default function ConfigPanel(props: Props) {
                 Main Idea Question
               </Label>
             </div>
-            <p className="text-xs text-muted-foreground ml-6">One question about the central theme</p>
+            <p className="text-xs text-muted-foreground ml-6">
+              One question about the central theme
+            </p>
           </div>
         </div>
 
@@ -119,18 +139,27 @@ export default function ConfigPanel(props: Props) {
 
           <div className="space-y-2">
             <Label className="text-sm">Quality & Speed</Label>
-            <RadioGroup value={qualityLevel} onValueChange={setQualityLevel} className="space-y-1">
+            <RadioGroup
+              value={qualityLevel}
+              onValueChange={setQualityLevel}
+              className="space-y-1"
+            >
               <div
                 className="flex items-center space-x-2 p-2 rounded border border-gray-300 hover:bg-muted/50 cursor-pointer"
                 onClick={() => setQualityLevel("high")}
               >
                 <RadioGroupItem value="high" id="high" />
                 <div className="flex-1">
-                  <Label htmlFor="high" className="flex items-center gap-2 cursor-pointer text-sm">
+                  <Label
+                    htmlFor="high"
+                    className="flex items-center gap-2 cursor-pointer text-sm"
+                  >
                     <CheckCircle className="h-3 w-3 text-gray-600" />
                     <span>High Quality</span>
                   </Label>
-                  <p className="text-xs text-muted-foreground">Best accuracy, slower</p>
+                  <p className="text-xs text-muted-foreground">
+                    Best accuracy, slower
+                  </p>
                 </div>
               </div>
               <div
@@ -139,11 +168,16 @@ export default function ConfigPanel(props: Props) {
               >
                 <RadioGroupItem value="fast" id="fast" />
                 <div className="flex-1">
-                  <Label htmlFor="fast" className="flex items-center gap-2 cursor-pointer text-sm">
+                  <Label
+                    htmlFor="fast"
+                    className="flex items-center gap-2 cursor-pointer text-sm"
+                  >
                     <Zap className="h-3 w-3 text-gray-600" />
                     <span>Fast Generation</span>
                   </Label>
-                  <p className="text-xs text-muted-foreground">Quick results, good quality</p>
+                  <p className="text-xs text-muted-foreground">
+                    Quick results, good quality
+                  </p>
                 </div>
               </div>
             </RadioGroup>
@@ -159,7 +193,10 @@ export default function ConfigPanel(props: Props) {
             <span className="text-muted-foreground">Est. Time:</span>
             <span className="text-sm flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              {Math.ceil(totalQuestions * (qualityLevel === "high" ? 1 : 0.5))} min
+              {Math.ceil(
+                totalQuestions * (qualityLevel === "high" ? 1 : 0.5)
+              )}{" "}
+              min
             </span>
           </div>
         </div>
@@ -184,5 +221,5 @@ export default function ConfigPanel(props: Props) {
         )}
       </Button>
     </div>
-  )
+  );
 }
