@@ -1,21 +1,22 @@
-"use client"
+"use client";
 
-import { useCallback } from "react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Upload, FileText, Type } from "lucide-react"
+import { useCallback, useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Upload, FileText, Type } from "lucide-react";
+import { extractTextClient } from "@/app/util/extract";
 
 type Props = {
-  text: string
-  setText: (v: string) => void
-  uploadedFile: File | null
-  setUploadedFile: (f: File | null) => void
-  inputMethod: string
-  setInputMethod: (v: string) => void
-}
+  text: string;
+  setText: (v: string) => void;
+  uploadedFile: File | null;
+  setUploadedFile: (f: File | null) => void;
+  inputMethod: string;
+  setInputMethod: (v: string) => void;
+};
 
 export default function UploadPanel({
   text,
@@ -25,20 +26,35 @@ export default function UploadPanel({
   inputMethod,
   setInputMethod,
 }: Props) {
-  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      setUploadedFile(file)
-      // simple simulated extraction, keep as-is from your page.tsx
-      setText(
-        `[Content from ${file.name}]\n\nThis is sample text extracted from the uploaded file. In a real implementation, this would be the actual content extracted from the PDF, DOC, or TXT file.`,
-      )
-    }
-  }, [setUploadedFile, setText])
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
+  const handleFileUpload = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      setExtractError(null);
+      setIsExtracting(true);
+      try {
+        setUploadedFile(file); // reflect in UI
+        const extracted = await extractTextClient(file);
+        setText(extracted.slice(0, 40000)); // cap to keep textarea snappy
+      } catch (e: any) {
+        setExtractError(e?.message || "Could not read file");
+      } finally {
+        setIsExtracting(false);
+      }
+    },
+    [setUploadedFile, setText]
+  );
 
   return (
     <div className="space-y-6 h-full flex flex-col">
-      <Tabs value={inputMethod} onValueChange={setInputMethod} className="w-full">
+      <Tabs
+        value={inputMethod}
+        onValueChange={setInputMethod}
+        className="w-full"
+      >
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="paste" className="flex items-center gap-2">
             <Type className="h-4 w-4" />
@@ -74,7 +90,7 @@ export default function UploadPanel({
               <input
                 type="file"
                 id="file-upload"
-                accept=".pdf,.doc,.docx,.txt"
+                accept=".pdf,.docx,.txt"
                 onChange={handleFileUpload}
                 className="hidden"
               />
@@ -86,12 +102,26 @@ export default function UploadPanel({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => document.getElementById("file-upload")?.click()}
+                    onClick={() =>
+                      document.getElementById("file-upload")?.click()
+                    }
                     className="mb-2 cursor-pointer"
                   >
                     Choose File
                   </Button>
-                  <p className="text-sm text-muted-foreground">PDF, DOC, DOCX, TXT files supported</p>
+                  <p className="text-sm text-muted-foreground">
+                    PDF, DOCX, TXT files supported
+                  </p>
+                  {isExtracting && (
+                    <p className="text-xs text-muted-foreground">
+                      Extracting text…
+                    </p>
+                  )}
+                  {extractError && (
+                    <p className="text-xs text-red-600">
+                      Error: {extractError}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -119,22 +149,32 @@ export default function UploadPanel({
       </Tabs>
 
       <div className="bg-muted/30 rounded-lg p-4 space-y-2">
-        <h4 className="text-sm font-medium text-asu-maroon">Tips for Better Questions:</h4>
+        <h4 className="text-sm font-medium text-asu-maroon">
+          Tips for Better Questions:
+        </h4>
         <ul className="text-sm text-muted-foreground space-y-1">
           <li className="flex items-start gap-2">
             <span className="text-asu-gold">•</span>
-            <span>Ensure your text is at least 100 words for optimal question generation</span>
+            <span>
+              Ensure your text is at least 100 words for optimal question
+              generation
+            </span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-asu-gold">•</span>
-            <span>Include clear concepts, definitions, and examples in your text</span>
+            <span>
+              Include clear concepts, definitions, and examples in your text
+            </span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-asu-gold">•</span>
-            <span>Academic papers, textbook chapters, and research articles work best</span>
+            <span>
+              Academic papers, textbook chapters, and research articles work
+              best
+            </span>
           </li>
         </ul>
       </div>
     </div>
-  )
+  );
 }

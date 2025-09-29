@@ -1,5 +1,4 @@
-import bundleAnalyzer from "@next/bundle-analyzer"
-
+import bundleAnalyzer from "@next/bundle-analyzer";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -12,7 +11,9 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-    experimental: {
+  transpilePackages: ["pdfjs-dist"],
+  output: "export", // for static export
+  experimental: {
     optimizePackageImports: [
       "lucide-react",
       "@radix-ui/react-dialog",
@@ -22,7 +23,9 @@ const nextConfig = {
       "@radix-ui/react-tabs",
     ],
   },
-}
+};
 
-const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "true" })
-export default withBundleAnalyzer(nextConfig)
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
+export default withBundleAnalyzer(nextConfig);
