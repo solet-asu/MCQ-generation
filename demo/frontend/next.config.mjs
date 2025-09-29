@@ -1,3 +1,6 @@
+import bundleAnalyzer from "@next/bundle-analyzer"
+
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
@@ -9,6 +12,17 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+    experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-popover",
+      "@radix-ui/react-select",
+      "@radix-ui/react-radio-group",
+      "@radix-ui/react-tabs",
+    ],
+  },
 }
 
-export default nextConfig
+const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "true" })
+export default withBundleAnalyzer(nextConfig)
