@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Settings, CheckCircle, Zap, Clock } from "lucide-react";
+import { Settings, CheckCircle, Zap, Clock, Sparkles } from "lucide-react";
 
 type Props = {
   textBasedQuestions: number;
@@ -205,17 +205,17 @@ export default function ConfigPanel(props: Props) {
       <Button
         onClick={onGenerate}
         disabled={!canGenerate || isGenerating}
-        className="w-full min-w-[112px] px-8 py-3 bg-asu-gold hover:bg-asu-gold/90 text-black font-medium rounded-full transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 cursor-pointer"
         size="lg"
+        className="w-full min-w-[112px] px-8 py-3 bg-asu-maroon hover:bg-asu-maroon/90 text-white font-medium rounded-full transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 cursor-pointer"
       >
         {isGenerating ? (
           <>
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2" />
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
             Generating...
           </>
         ) : (
           <>
-            <Settings className="h-4 w-4 mr-2" />
+            <Sparkles className="h-4 w-4 mr-2" aria-hidden="true" />
             Generate {totalQuestions}
           </>
         )}

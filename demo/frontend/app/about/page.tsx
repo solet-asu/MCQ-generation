@@ -17,6 +17,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function AboutPage() {
   return (
@@ -36,22 +37,24 @@ export default function AboutPage() {
                 </Button>
               </Link>
               <div className="flex items-center gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-asu-maroon text-white">
-                  <Sparkles className="h-5 w-5" />
-                </div>
+                <Image
+                  src="/asu-logo.png" // ← your file path in /public
+                  alt="ASU"
+                  width={240}
+                  height={72}
+                  className="h-15 w-auto"
+                  priority
+                />
                 <div>
-                  <h1 className="text-2xl font-bold text-asu-maroon">
+                  <h1 className="text-2xl font-bold text-asu-black">
                     ReQUESTA
                   </h1>
                   <p className="text-muted-foreground">
-                    Academic Question Generator
+                    Academic Questions Generator
                   </p>
                 </div>
               </div>
             </div>
-            <Badge className="bg-asu-gold text-black font-medium">
-              ASU Unity
-            </Badge>
           </div>
         </div>
       </header>
@@ -188,30 +191,6 @@ export default function AboutPage() {
                     format
                   </p>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Team Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-asu-maroon">
-                <Users className="h-5 w-5" />
-                Built at ASU
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p>
-                ReQUESTA is developed by Arizona State University as part of our
-                commitment to innovation in education technology. Our
-                interdisciplinary team combines expertise in artificial
-                intelligence, educational psychology, and user experience
-                design.
-              </p>
-              <div className="flex items-center gap-4 pt-4">
-                <Badge className="bg-asu-gold text-black">ASU Innovation</Badge>
-                <Badge variant="outline">Educational Technology</Badge>
-                <Badge variant="outline">AI Research</Badge>
               </div>
             </CardContent>
           </Card>

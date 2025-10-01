@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/accordion";
 import { Sparkles, HelpCircle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function FAQsPage() {
   const faqs = [
@@ -121,22 +122,24 @@ export default function FAQsPage() {
                 </Button>
               </Link>
               <div className="flex items-center gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-asu-maroon text-white">
-                  <Sparkles className="h-5 w-5" />
-                </div>
+                <Image
+                  src="/asu-logo.png" // ← your file path in /public
+                  alt="ASU"
+                  width={240}
+                  height={72}
+                  className="h-15 w-auto"
+                  priority
+                />
                 <div>
-                  <h1 className="text-2xl font-bold text-asu-maroon">
+                  <h1 className="text-2xl font-bold text-asu-black">
                     ReQUESTA
                   </h1>
                   <p className="text-muted-foreground">
-                    Academic Question Generator
+                    Academic Questions Generator
                   </p>
                 </div>
               </div>
             </div>
-            <Badge className="bg-asu-gold text-black font-medium">
-              ASU Unity
-            </Badge>
           </div>
         </div>
       </header>
@@ -156,77 +159,6 @@ export default function FAQsPage() {
               most out of our AI-powered question generator
             </p>
           </div>
-
-          {/* Quick Links */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-asu-maroon">
-                Quick Navigation
-              </CardTitle>
-              <CardDescription>
-                Jump to the most commonly asked questions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="justify-start h-auto p-2 text-left"
-                >
-                  <a href="#what-is-requesta" className="text-sm">
-                    What is ReQUESTA?
-                  </a>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="justify-start h-auto p-2 text-left"
-                >
-                  <a href="#how-does-it-work" className="text-sm">
-                    How does it work?
-                  </a>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="justify-start h-auto p-2 text-left"
-                >
-                  <a href="#question-types" className="text-sm">
-                    Question types
-                  </a>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="justify-start h-auto p-2 text-left"
-                >
-                  <a href="#supported-formats" className="text-sm">
-                    Supported formats
-                  </a>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="justify-start h-auto p-2 text-left"
-                >
-                  <a href="#download-options" className="text-sm">
-                    Download options
-                  </a>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="justify-start h-auto p-2 text-left"
-                >
-                  <a href="#privacy-security" className="text-sm">
-                    Privacy & Security
-                  </a>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* FAQ Accordion */}
           <Card>
             <CardHeader>
@@ -248,39 +180,6 @@ export default function FAQsPage() {
                   </AccordionItem>
                 ))}
               </Accordion>
-            </CardContent>
-          </Card>
-
-          {/* Contact Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-asu-maroon">
-                Still Have Questions?
-              </CardTitle>
-              <CardDescription>
-                Can't find what you're looking for? We're here to help!
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="/" className="flex-1">
-                  <Button className="w-full bg-asu-maroon hover:bg-asu-maroon/90 text-white">
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Try ReQUESTA Now
-                  </Button>
-                </Link>
-                <Link href="/about" className="flex-1">
-                  <Button variant="outline" className="w-full bg-transparent">
-                    Learn More About ReQUESTA
-                  </Button>
-                </Link>
-              </div>
-              <div className="mt-4 p-4 bg-muted/30 rounded-lg">
-                <p className="text-sm text-muted-foreground text-center">
-                  For technical support or additional questions, please contact
-                  the ASU support team
-                </p>
-              </div>
             </CardContent>
           </Card>
         </div>

@@ -5,6 +5,8 @@ import { Sparkles, Info, HelpCircle } from "lucide-react";
 import HomeClient from "./_components/HomeClient";
 import { OverlayProvider } from "./_components/overlay-store";
 import BlockingOverlay from "./_components/BlockingOverlay";
+import NavLink from "./_components/NavLink";
+import Image from "next/image";
 
 export default function HomePage() {
   return (
@@ -14,44 +16,28 @@ export default function HomePage() {
           <div className="container py-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-asu-maroon text-white">
-                  <Sparkles className="h-5 w-5" />
-                </div>
+                <Image
+                  src="/asu-logo.png" // ← your file path in /public
+                  alt="ASU"
+                  width={240}
+                  height={72}
+                  className="h-15 w-auto"
+                  priority
+                />
                 <div>
-                  <h1 className="text-2xl font-bold text-asu-maroon">
+                  <h1 className="text-2xl font-bold text-asu-black">
                     ReQUESTA
                   </h1>
                   <p className="text-muted-foreground">
-                    Academic Question Generator
+                    Academic Questions Generator
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <nav className="flex items-center gap-2">
-                  <Link href="/about">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex items-center gap-2 text-muted-foreground hover:text-asu-maroon"
-                    >
-                      <Info className="h-4 w-4" />
-                      About
-                    </Button>
-                  </Link>
-                  <Link href="/faqs">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex items-center gap-2 text-muted-foreground hover:text-asu-maroon"
-                    >
-                      <HelpCircle className="h-4 w-4" />
-                      FAQs
-                    </Button>
-                  </Link>
+                <nav className="flex items-center gap-4">
+                  <NavLink href="/about">About</NavLink>
+                  <NavLink href="/faqs">FAQs</NavLink>
                 </nav>
-                <Badge className="bg-asu-gold text-black font-medium">
-                  ASU Unity
-                </Badge>
               </div>
             </div>
           </div>
