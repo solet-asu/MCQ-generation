@@ -14,6 +14,7 @@ import UploadPanel from "./UploadPanel";
 import ConfigPanel from "./ConfigPanel";
 import dynamic from "next/dynamic";
 import { useOverlay } from "./overlay-store";
+import { postJSON, ApiError } from "@/app/util/api";
 
 const QuestionsList = dynamic(() => import("./QuestionsList"), {
   ssr: false,
@@ -51,12 +52,16 @@ export default function HomeClient() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // error state
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const totalQuestions =
     textBasedQuestions + inferentialQuestions + (includeMainIdea ? 1 : 0);
   const canGenerate =
     (text.trim().length > 50 || !!uploadedFile) && totalQuestions > 0;
 
   const handleGenerate = async () => {
+    setErrorMsg(null); // clear any old error
     show();
     setIsGenerating(true);
     try {
@@ -68,19 +73,7 @@ export default function HomeClient() {
         quality_first: qualityLevel === "high" ? "yes" : "no",
       };
 
-      // call your API
-      const response = await fetch(
-        "https://damion-unframed-inez.ngrok-free.dev/generate_mcq",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestPayload),
-        }
-      );
-      if (!response.ok)
-        throw new Error(`API request failed: ${response.status}`);
-
-      const apiData = await response.json();
+      const apiData = await postJSON<any[]>("/generate_mcq", requestPayload);
 
       let parsedQuestions: Question[] = [];
       if (
@@ -111,67 +104,28 @@ export default function HomeClient() {
         const el = document.querySelector("[data-questions-section]");
         el?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 300);
-    } catch (err) {
-      console.error("Error generating questions:", err);
+    } catch (e: any) {
+      hide();
+      console.error("Error generating questions:", e);
       setIsGenerating(false);
 
-      // fallback sample questions
-      const sample: Question[] = [
-        {
-          id: 1,
-          type: "Text-based",
-          question:
-            "According to the passage, what is the primary factor that influences student engagement?",
-          options: [
-            "The complexity of the material",
-            "The teaching methodology used",
-            "The student's prior knowledge",
-            "The classroom environment",
-          ],
-          correct: 1,
-          explanation:
-            "Sample explanation - This will be provided by the API in future updates. The explanation will detail why this answer is correct and provide additional context from the source material.",
-          questionType:
-            "Sample type - This will categorize the cognitive level in future updates.",
-        },
-        {
-          id: 2,
-          type: "Inferential",
-          question:
-            "Based on the information provided, what can be inferred about the relationship between technology and learning outcomes?",
-          options: [
-            "Technology always improves learning outcomes",
-            "Technology has no impact on learning",
-            "Technology's impact depends on implementation",
-            "Technology hinders traditional learning methods",
-          ],
-          correct: 2,
-          explanation:
-            "Sample explanation - This will be provided by the API in future updates. The explanation will detail why this answer is correct and provide additional context from the source material.",
-          questionType:
-            "Sample type - This will categorize the cognitive level in future updates.",
-        },
-      ];
-      if (includeMainIdea) {
-        sample.push({
-          id: 3,
-          type: "Main Idea",
-          question: "What is the central theme of this passage?",
-          options: [
-            "The importance of educational technology",
-            "Factors affecting student learning and engagement",
-            "Traditional vs modern teaching methods",
-            "The role of teachers in student success",
-          ],
-          correct: 1,
-          explanation:
-            "Sample explanation - This will be provided by the API in future updates. The explanation will detail why this answer is correct and provide additional context from the source material.",
-          questionType:
-            "Sample type - This will categorize the cognitive level in future updates.",
-        });
+      // Friendly messages
+      let msg = "Something went wrong generating questions.";
+      if (e instanceof ApiError) {
+        if (e.code === "NETWORK")
+          msg =
+            "Cannot reach the generator. Check your internet connection (or CORS).";
+        else if (e.code?.startsWith("HTTP_"))
+          msg = `Generator error ${e.status}${
+            e.detail ? ` — ${e.detail}` : ""
+          }`;
+        else if (e.code === "PARSE") msg = "Generator returned invalid JSON.";
+        else if (e.code === "TIMEOUT")
+          msg = "This took too long and was aborted."; // not used by default
+      } else if (e instanceof Error && e.message) {
+        msg = e.message;
       }
-      setQuestions(sample);
-
+      setErrorMsg(msg);
       setTimeout(() => {
         const el = document.querySelector("[data-questions-section]");
         el?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -337,6 +291,11 @@ export default function HomeClient() {
 
       {/* Questions list */}
       <div className="w-full mt-8" data-questions-section>
+        {errorMsg && (
+          <div className="mb-4 rounded-md border border-red-300 bg-red-50 text-red-800 p-3 text-sm">
+            {errorMsg}
+          </div>
+        )}
         {questions.length === 0 ? (
           <div className="border border-border rounded-lg p-8 text-center">
             <div className="w-12 h-12 mx-auto mb-3 bg-muted rounded-full flex items-center justify-center">
