@@ -197,7 +197,7 @@ export default function QuestionsList({ questions, totalQuestions }: Props) {
                             </Label>
                             <p className="text-xs text-muted-foreground mt-1">
                               Add a separate answer key section at the end of
-                              the document (useful for teachers)
+                              the document
                             </p>
                           </div>
                         </div>
