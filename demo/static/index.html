@@ -158,7 +158,7 @@
 
             <h2>Specify the number of different types of questions you want to generate:</h2>
 
-            <label>Factual Questions:
+            <label>Text-based Questions:
                 <input
                     type="number"
                     id="fact"
@@ -167,7 +167,7 @@
                     required>
             </label>
 
-            <label>Inference Questions:
+            <label>Inferential Questions:
                 <input
                     type="number"
                     id="inference"
@@ -258,7 +258,8 @@
             const mcqDiv = document.createElement('div');
             mcqDiv.className = 'mcq_question';
 
-            const pattern = /(?=\(?[A-D]\))/;  // splits at spaces before A), B), C), or D)
+            // Split stem and choices (A) B) C) D))
+            const pattern = /(?=\(?[A-D]\))/;
             const [stem, ...choices] = item.mcq.trim().split(pattern);
 
             const stemParagraph = document.createElement('p');
@@ -271,22 +272,47 @@
                 choiceParagraph.textContent = choice.trim();
                 choicesContainer.appendChild(choiceParagraph);
             });
-
             mcqDiv.appendChild(choicesContainer);
 
+            // Answer / Explanation section
             const answerDiv = document.createElement('div');
             answerDiv.className = 'answer';
 
+            // Buttons
             const checkAnswerButton = document.createElement('button');
             checkAnswerButton.textContent = 'Check Answer';
+
+            const explanationButton = document.createElement('button');
+            explanationButton.textContent = 'Explanation';
+
+            // Text containers (hidden until clicked)
+            const answerText = document.createElement('p');
+            answerText.style.display = 'none';
+
+            const explanationText = document.createElement('p');
+            explanationText.style.display = 'none';
+
+            // Button behaviors
             checkAnswerButton.onclick = function () {
+                answerText.innerHTML = `<strong>Answer:</strong> ${item.mcq_answer}`;
+                answerText.style.display = 'block';
                 checkAnswerButton.style.display = 'none';
-                answerDiv.innerHTML = `<p><strong>Answer:</strong> ${item.mcq_answer}</p>`;
             };
 
-            answerDiv.appendChild(checkAnswerButton);
-            mcqDiv.appendChild(answerDiv);
+            explanationButton.onclick = function () {
+                const expl = (item.explanation ?? 'No explanation provided.');
+                explanationText.innerHTML = `<strong>Explanation:</strong> ${expl}`;
+                explanationText.style.display = 'block';
+                explanationButton.style.display = 'none';
+            };
 
+            // Order: buttons, then revealed texts
+            answerDiv.appendChild(checkAnswerButton);
+            answerDiv.appendChild(explanationButton);
+            answerDiv.appendChild(answerText);
+            answerDiv.appendChild(explanationText);
+
+            mcqDiv.appendChild(answerDiv);
             return mcqDiv;
         }
     </script>
