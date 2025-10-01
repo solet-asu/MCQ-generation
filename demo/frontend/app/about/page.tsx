@@ -67,10 +67,6 @@ export default function AboutPage() {
               <h1 className="text-4xl font-bold text-asu-maroon">
                 About ReQUESTA
               </h1>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Revolutionizing academic assessment through AI-powered question
-                generation
-              </p>
             </div>
           </div>
 
@@ -78,7 +74,6 @@ export default function AboutPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-asu-maroon">
-                <Target className="h-5 w-5" />
                 Our Mission
               </CardTitle>
             </CardHeader>

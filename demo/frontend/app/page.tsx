@@ -17,7 +17,7 @@ export default function HomePage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Image
-                  src="/asu-logo.png" // ← your file path in /public
+                  src="/asu-logo.png"
                   alt="ASU"
                   width={240}
                   height={72}

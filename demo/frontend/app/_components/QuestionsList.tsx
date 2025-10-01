@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -94,14 +94,16 @@ export default function QuestionsList({ questions, totalQuestions }: Props) {
                 onOpenChange={setIsDownloadModalOpen}
               >
                 <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2 bg-transparent cursor-pointer"
+                  <button
+                    type="button"
+                    className={
+                      buttonVariants({ variant: "outline", size: "sm" }) +
+                      " flex items-center gap-2 bg-transparent cursor-pointer"
+                    }
                   >
                     <Download className="h-4 w-4" />
                     Download
-                  </Button>
+                  </button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-lg">
                   <DialogHeader>

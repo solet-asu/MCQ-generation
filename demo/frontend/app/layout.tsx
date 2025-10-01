@@ -12,7 +12,7 @@ const arial = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "ReQUESTA - Academic Question Generator",
+  title: "ReQUESTA - Academic Questions Generator",
   description:
     "Generate high-quality multiple-choice questions from academic texts using AI",
   generator: "ReQUESTA",
