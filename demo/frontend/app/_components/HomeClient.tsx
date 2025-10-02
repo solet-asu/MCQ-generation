@@ -23,6 +23,12 @@ const QuestionsList = dynamic(() => import("./QuestionsList"), {
   ),
 });
 
+const TYPE_LABEL: Record<string, string> = {
+  fact: "Text-based",
+  inference: "Inferential",
+  main_idea: "Main Idea",
+};
+
 type Question = {
   id: number;
   type: string;
@@ -147,6 +153,10 @@ export default function HomeClient() {
   const parseQuestionItem = (item: any, index: number): Question => {
     const mcqText = item.mcq as string;
     const correctAnswer = item.mcq_answer as string;
+    const apiExplanation =
+      typeof item.explanation === "string" ? item.explanation : "";
+    const apiType = String(item.question_type ?? "").toLowerCase(); // "fact" | "inference" | "main_idea"
+    const displayType = TYPE_LABEL[apiType] ?? "Text-based";
 
     let question = "";
     let options: string[] = [];
@@ -218,22 +228,14 @@ export default function HomeClient() {
       }
     }
 
-    let questionType = "Text-based";
-    if (index < textBasedQuestions) questionType = "Text-based";
-    else if (index < textBasedQuestions + inferentialQuestions)
-      questionType = "Inferential";
-    else questionType = "Main Idea";
-
     return {
       id: index + 1,
-      type: questionType,
+      type: displayType,
       question,
       options,
       correct: correctIndex,
       explanation:
-        "Sample explanation - This will be provided by the API in future updates. The explanation will detail why this answer is correct and provide additional context from the source material.",
-      questionType:
-        "Sample type - This will categorize the cognitive level (Remember, Understand, Apply, Analyze, Evaluate, Create) in future updates.",
+        apiExplanation || "No explanation was provided by the generator.", // gentle fallback
     };
   };
 
