@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -55,6 +55,27 @@ export default function HomeClient() {
   // error state
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Smooth-scroll to the questions after generation finishes (success OR error)
+  useEffect(() => {
+    if (isGenerating) return; // only after we finish
+    if (questions.length === 0 && !errorMsg) return;
+
+    const el = document.getElementById("questions-section");
+    if (!el) return;
+
+    const scroll = () =>
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    // let layout + the dynamic QuestionsList settle
+    const raf1 = requestAnimationFrame(() => requestAnimationFrame(scroll));
+    const fallback = setTimeout(scroll, 700);
+
+    return () => {
+      cancelAnimationFrame(raf1);
+      clearTimeout(fallback);
+    };
+  }, [isGenerating, questions.length, errorMsg]);
+
   const totalQuestions =
     textBasedQuestions + inferentialQuestions + (includeMainIdea ? 1 : 0);
   const canGenerate =
@@ -98,12 +119,6 @@ export default function HomeClient() {
       setQuestions(parsedQuestions);
       setIsGenerating(false);
       hide();
-
-      // scroll to questions
-      setTimeout(() => {
-        const el = document.querySelector("[data-questions-section]");
-        el?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 300);
     } catch (e: any) {
       hide();
       console.error("Error generating questions:", e);
@@ -126,10 +141,6 @@ export default function HomeClient() {
         msg = e.message;
       }
       setErrorMsg(msg);
-      setTimeout(() => {
-        const el = document.querySelector("[data-questions-section]");
-        el?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 300);
     }
   };
 
@@ -290,7 +301,11 @@ export default function HomeClient() {
       </div>
 
       {/* Questions list */}
-      <div className="w-full mt-8" data-questions-section>
+      <div
+        id="questions-section"
+        data-questions-section
+        className="w-full mt-8 scroll-mt-24 md:scroll-mt-28"
+      >
         {errorMsg && (
           <div className="mb-4 rounded-md border border-red-300 bg-red-50 text-red-800 p-3 text-sm">
             {errorMsg}
