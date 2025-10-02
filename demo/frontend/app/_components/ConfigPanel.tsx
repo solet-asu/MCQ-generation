@@ -51,6 +51,16 @@ export default function ConfigPanel(props: Props) {
     onGenerate,
   } = props;
 
+  const secondsPerQuestion = qualityLevel === "high" ? 15 : 10;
+  const totalSecs = Math.max(0, totalQuestions * secondsPerQuestion);
+
+  function formatEta(sec: number) {
+    if (sec <= 120) return `${sec}s`;
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return s === 0 ? `${m} min` : `${m} min ${s} s`;
+  }
+
   return (
     <div className="h-full flex flex-col space-y-4">
       <div className="space-y-4 flex-1">
@@ -123,6 +133,7 @@ export default function ConfigPanel(props: Props) {
         <div className="space-y-3 pt-3 border-t border-border">
           <h3 className="font-medium text-sm">Settings</h3>
 
+          {/*           
           <div className="space-y-2">
             <Label className="text-sm">AI Model</Label>
             <Select value={selectedModel} onValueChange={setSelectedModel}>
@@ -135,7 +146,7 @@ export default function ConfigPanel(props: Props) {
                 <SelectItem value="claude">Claude</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </div> */}
 
           <div className="space-y-2">
             <Label className="text-sm">Quality & Speed</Label>
@@ -144,24 +155,7 @@ export default function ConfigPanel(props: Props) {
               onValueChange={setQualityLevel}
               className="space-y-1"
             >
-              <div
-                className="flex items-center space-x-2 p-2 rounded border border-gray-300 hover:bg-muted/50 cursor-pointer"
-                onClick={() => setQualityLevel("high")}
-              >
-                <RadioGroupItem value="high" id="high" />
-                <div className="flex-1">
-                  <Label
-                    htmlFor="high"
-                    className="flex items-center gap-2 cursor-pointer text-sm"
-                  >
-                    <CheckCircle className="h-3 w-3 text-gray-600" />
-                    <span>High Quality</span>
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Best accuracy, slower
-                  </p>
-                </div>
-              </div>
+              {/* Fast first */}
               <div
                 className="flex items-center space-x-2 p-2 rounded border border-gray-300 hover:bg-muted/50 cursor-pointer"
                 onClick={() => setQualityLevel("fast")}
@@ -180,6 +174,26 @@ export default function ConfigPanel(props: Props) {
                   </p>
                 </div>
               </div>
+
+              {/* High second */}
+              <div
+                className="flex items-center space-x-2 p-2 rounded border border-gray-300 hover:bg-muted/50 cursor-pointer"
+                onClick={() => setQualityLevel("high")}
+              >
+                <RadioGroupItem value="high" id="high" />
+                <div className="flex-1">
+                  <Label
+                    htmlFor="high"
+                    className="flex items-center gap-2 cursor-pointer text-sm"
+                  >
+                    <CheckCircle className="h-3 w-3 text-gray-600" />
+                    <span>High Quality</span>
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Best accuracy, slower
+                  </p>
+                </div>
+              </div>
             </RadioGroup>
           </div>
         </div>
@@ -193,10 +207,7 @@ export default function ConfigPanel(props: Props) {
             <span className="text-muted-foreground">Est. Time:</span>
             <span className="text-sm flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              {Math.ceil(
-                totalQuestions * (qualityLevel === "high" ? 1 : 0.5)
-              )}{" "}
-              min
+              {formatEta(totalSecs)}
             </span>
           </div>
         </div>

@@ -52,7 +52,7 @@ export default function HomeClient() {
   const [inferentialQuestions, setInferentialQuestions] = useState(3);
   const [includeMainIdea, setIncludeMainIdea] = useState(true);
   const [selectedModel, setSelectedModel] = useState("gpt-4");
-  const [qualityLevel, setQualityLevel] = useState("balanced");
+  const [qualityLevel, setQualityLevel] = useState<"fast" | "high">("fast");
 
   // generation state
   const [questions, setQuestions] = useState<Question[]>([]);
