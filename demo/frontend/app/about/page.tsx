@@ -72,23 +72,24 @@ export default function AboutPage() {
 
           {/* Mission Section */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-asu-maroon">
-                Our Mission
-              </CardTitle>
-            </CardHeader>
+            <CardHeader></CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-lg">
-                ReQUESTA empowers educators and students by transforming
-                academic texts into high-quality, pedagogically sound
-                multiple-choice questions using advanced artificial
-                intelligence.
-              </p>
-              <p>
-                Our platform bridges the gap between content creation and
-                assessment, making it easier for educators to create meaningful
-                evaluations while helping students engage more deeply with
-                academic material through thoughtfully crafted questions.
+              <p className="text-md">
+                ReQUESTA is a multi-agent workflow that turns long academic
+                texts into high-quality, cognitively diverse multiple-choice
+                questions. Instead of producing easy recall items, ReQUESTA
+                plans around the source content’s key concepts and inferences,
+                then crafts text-based, inferential, and main-idea questions
+                that demand interpretation and synthesis. By ensuring plausible
+                distractors and consistent quality checks, it yields questions
+                that actually measure understanding. For educators, this means
+                faster creation of valid assessments and richer practice items
+                that reinforce what matters—not trivia. For learning systems and
+                students, it powers self-assessment that builds metacognition:
+                learners test themselves on central arguments and relationships,
+                get meaningful feedback, and close gaps more effectively. In
+                short, ReQUESTA turns long texts into targeted, high-quality
+                MCQs that enhance teaching and deepen learning
               </p>
             </CardContent>
           </Card>
