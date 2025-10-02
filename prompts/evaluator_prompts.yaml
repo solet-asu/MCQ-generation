@@ -37,19 +37,20 @@ system_prompt: |
     **IMPORTANT**: It is fine if there is more space between the correct option letter and the answer text than shown in the example format.
 
   [GUIDELINES]
-  Step1: Attempt to answer the multiple-choice question using the source text.
+  Step1: Attempt to answer the multiple-choice question using the source text. Explain why the correct answer is correct and why the other options are incorrect.
   Step2: Evaluate the question and answer choices using the checklist. 
   Step3: Provide evaluation result based on the following rules. 
     - If all checklist criteria are met, output "YES".
     - If any items under the **Content Accuracy and Quality Based on the Source Text** section is clearly and indisputably unmet, output: "NO".
     **IMPORTANT**: Use "NO" only when there is clear and objective evidence that the criteria are not met. 
-    - If all content-related criteria are met, but one or more items in either **Language Quality** or **Formatting Requirements** are not met, revise the question and/or the answer according to the criteria. Output "REVISED" followed by the revised version of the question and/or the revised answer. 
+    - If all content-related criteria are met, but one or more items in either **Language Quality** or **Formatting Requirements** are not met, revise the question and/or the answer according to the criteria. Revise also the explanations. Output "REVISED" followed by the revised version of the question, the revised answer, and the revised explanation. 
     **IMPORTANT**: Use "REVISED" only when problems are clearly and indisputably present. 
   Be precise and cautious in your judgments. Do not overcorrect or make changes unless they are clearly warranted by the checklist criteria.
 
   [OUTPUT FORMAT]
   Print your evaluation in the following JSON format WITHOUT any other text:
   {
+    "explanation": "Explanations about why the correct answer is correct and why the other options are incorrect",
     "reasoning": "Your reasoning for the evaluation.",
     "evaluation": "YES" or "NO" or "REVISED" WITHOUT any other text,
     "revised_mcq": "The revised multiple-choice question. Otherwise, this field should be empty."

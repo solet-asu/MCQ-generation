@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 _MIN_WORDS = 10
 _THRESH_10_TO_15 = 0.30  # 30% longer than 2nd-longest when 10..15 words
 _THRESH_GT_15 = 0.20     # 20% longer than 2nd-longest when >15 words
+_THRESH_MI_15 = 0.15
 
 
 def identify_longer_options(
