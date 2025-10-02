@@ -21,7 +21,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import { Download, Eye, EyeOff, RotateCcw, Sparkles } from "lucide-react";
+import {
+  Download,
+  Eye,
+  EyeOff,
+  RotateCcw,
+  Sparkles,
+  Pencil,
+} from "lucide-react";
 
 type Question = {
   id: number;
@@ -326,6 +333,16 @@ export default function QuestionsList({ questions, totalQuestions }: Props) {
                         ) : (
                           <Eye className="h-4 w-4" />
                         )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {}}
+                        className="h-8 w-8 p-0 cursor-default"
+                        title="Edit this question (demo)"
+                        aria-label="Edit this question"
+                      >
+                        <Pencil className="h-4 w-4 opacity-80 hover:opacity-100 transition-opacity" />
                       </Button>
                       <Button
                         variant="ghost"

@@ -57,6 +57,7 @@ export default function HomeClient() {
   // generation state
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationId, setGenerationId] = useState(0);
 
   // error state
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -89,6 +90,8 @@ export default function HomeClient() {
 
   const handleGenerate = async () => {
     setErrorMsg(null); // clear any old error
+    setQuestions([]); // clear immediately so old content disappears
+    setGenerationId((id) => id + 1);
     show();
     setIsGenerating(true);
     try {
@@ -331,6 +334,7 @@ export default function HomeClient() {
           </div>
         ) : (
           <QuestionsList
+            key={generationId} // force remount on new generation
             questions={questions}
             totalQuestions={totalQuestions}
           />
