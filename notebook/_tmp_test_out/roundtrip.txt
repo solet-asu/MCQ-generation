@@ -1,0 +1,16 @@
+PASSAGES = {
+    'p1': {
+        'id': 'id1',
+        'title': 'Passage',
+        'text': """
+A\n\nB
+"""
+    },
+    'p2': {
+        'id': 'id2',
+        'title': 'Passage',
+        'text': """
+C with "quotes" and triple: \""" here
+"""
+    },
+}
