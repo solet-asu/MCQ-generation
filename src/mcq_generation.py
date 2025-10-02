@@ -375,7 +375,9 @@ async def generate_mcq_quality_first(
             candidate_questions.append({
                 "question_number": i,
                 "question": mcq["mcq"],
-                "answer": mcq["mcq_answer"]
+                "answer": mcq["mcq_answer"],
+                "explanation": mcq.get("explanation", "")
+
             })
 
     # Set up prompts for the ranking model
@@ -447,21 +449,26 @@ async def generate_mcq_quality_first(
         if candidate_questions:
             selected_mcq = candidate_questions[selected_mcq_num_int]["question"]
             selected_mcq_answer = candidate_questions[selected_mcq_num_int]["answer"]
+            selected_mcq_explanation = candidate_questions[selected_mcq_num_int].get("explanation", "")
 
         ranking_metadata.update({
             "completion": generated_text,
             "mcq": selected_mcq,
-            "mcq_answer": selected_mcq_answer
+            "mcq_answer": selected_mcq_answer,
+            "explanation": selected_mcq_explanation
+
         })
     else:
         logger.warning("Failed to generate a ranking; defaulting to first candidate if available.")
         if candidate_questions:
             selected_mcq = candidate_questions[0]["question"]
             selected_mcq_answer = candidate_questions[0]["answer"]
+            selected_mcq_explanation = candidate_questions[0].get("explanation", "")
         ranking_metadata.update({
             "completion": "No ranking generated; chose first candidate if available.",
             "mcq": selected_mcq,
-            "mcq_answer": selected_mcq_answer
+            "mcq_answer": selected_mcq_answer,
+            "explanation": selected_mcq_explanation
         })
 
     # Insert the metadata into the database
