@@ -127,6 +127,7 @@ TABLE_SCHEMAS: Dict[str, Dict[str, str]] = {
         "completion": "TEXT",
         "mcq": "TEXT",
         "mcq_answer": "TEXT",
+        "explanation": "TEXT",
         "execution_time": "TEXT",
         "input_tokens": "INTEGER",
         "output_tokens": "INTEGER",
