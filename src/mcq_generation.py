@@ -254,10 +254,15 @@ async def generate_mcq(
                 status = evaluation_meta_dict.get("evaluation")
                 if status == "YES":
                     logger.info("Evaluation passed successfully.")
+                    # add explanation to mcq_metadata
+                    mcq_metadata["explanation"] = evaluation_meta_dict.get("explanation", "")
                 elif status == "REVISED":
                     logger.info("Evaluation revised successfully.")
+                    explanation = evaluation_meta_dict.get("explanation", "")
                     revised_mcq = evaluation_meta_dict.get("revised_mcq", "")
                     revised_answer = evaluation_meta_dict.get("revised_answer", "")
+                    if explanation:
+                        mcq_metadata["explanation"] = explanation
                     if revised_mcq:
                         mcq_metadata["mcq"] = revised_mcq
                     if revised_answer:

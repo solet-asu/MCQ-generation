@@ -50,11 +50,13 @@ async def generate_evaluation(invocation_id: str,
         generated_text_dict = extract_json_string(generated_text)
         
         # extract evaluation, revised_mcq, and reasoning from the generated text
+        explanation = generated_text_dict.get("explanation", "")
         evaluation = generated_text_dict.get("evaluation", "")
         revised_mcq = generated_text_dict.get("revised_mcq", "")
         revised_answer = generated_text_dict.get("revised_answer", "")
         reasoning = generated_text_dict.get("reasoning", "")
         # add the evaluation, revised_mcq, and reasoning to the evaluation metadata
+        evaluation_metadata["explanation"] = explanation
         evaluation_metadata["evaluation"] = evaluation
         evaluation_metadata["revised_mcq"] = revised_mcq 
         evaluation_metadata["revised_answer"] = revised_answer  
@@ -66,12 +68,14 @@ async def generate_evaluation(invocation_id: str,
         logger.warning("Failed to generate an evaluation.")
 
         # set evaluation, revised_mcq, and reasoning as empty strings
+        explanation = ""
         evaluation = ""
         revised_mcq = ""
         revised_answer = ""
         reasoning = ""
 
         # add the evaluation, revised_mcq, and reasoning to the evaluation metadata
+        evaluation_metadata["explanation"] = explanation
         evaluation_metadata["evaluation"] = evaluation
         evaluation_metadata["revised_mcq"] = revised_mcq
         evaluation_metadata["revised_answer"] = revised_answer
