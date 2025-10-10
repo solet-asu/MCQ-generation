@@ -1,0 +1,14 @@
+version: 1.0
+runtime: docker
+
+build:
+  dockerfile: Dockerfile
+  context: .
+
+port: 8080
+
+# Optional: Environment variables
+env:
+  variables:
+    ENV: production
+    
