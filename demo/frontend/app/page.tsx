@@ -47,7 +47,6 @@ export default function HomePage() {
             <HomeClient />
           </div>
         </main>
-        <BlockingOverlay message="ReQUESTA is generating questions" />
       </OverlayProvider>
     </div>
   );
