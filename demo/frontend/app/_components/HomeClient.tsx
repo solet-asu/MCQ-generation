@@ -49,10 +49,10 @@ export default function HomeClient() {
   const { show, hide } = useOverlay();
 
   // config state
-  const [textBasedQuestions, setTextBasedQuestions] = useState(5);
-  const [inferentialQuestions, setInferentialQuestions] = useState(3);
+  const [textBasedQuestions, setTextBasedQuestions] = useState(1);
+  const [inferentialQuestions, setInferentialQuestions] = useState(1);
   const [includeMainIdea, setIncludeMainIdea] = useState(true);
-  const [selectedModel, setSelectedModel] = useState("gpt-4");
+  const [selectedModel, setSelectedModel] = useState("gpt-4o");
   const [qualityLevel, setQualityLevel] = useState<"fast" | "high">("fast");
 
   // generation state

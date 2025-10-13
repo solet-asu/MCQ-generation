@@ -109,7 +109,7 @@ export default function UploadPanel({
             <input
               type="file"
               id="file-upload"
-              accept=".pdf,.doc,.docx,.txt"
+              accept=".pdf,.docx,.txt"
               onChange={handleFileUploadInput}
               className="hidden"
             />
