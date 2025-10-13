@@ -44,7 +44,6 @@ export default function HomeClient() {
   // input state
   const [text, setText] = useState("");
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [inputMethod, setInputMethod] = useState("paste");
 
   const { show, hide } = useOverlay();
 
@@ -310,8 +309,6 @@ export default function HomeClient() {
                 setText={setText}
                 uploadedFile={uploadedFile}
                 setUploadedFile={setUploadedFile}
-                inputMethod={inputMethod}
-                setInputMethod={setInputMethod}
               />
             </CardContent>
           </Card>
