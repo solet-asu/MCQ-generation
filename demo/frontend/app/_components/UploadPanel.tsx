@@ -17,6 +17,8 @@ import { extractTextClient } from "@/app/util/extract";
 type Props = {
   text: string;
   setText: (v: string) => void;
+  fullText: string;
+  setFullText: (v: string) => void;
   uploadedFile: File | null;
   setUploadedFile: (f: File | null) => void;
 };
@@ -24,6 +26,8 @@ type Props = {
 export default function UploadPanel({
   text,
   setText,
+  fullText,
+  setFullText,
   uploadedFile,
   setUploadedFile,
 }: Props) {
@@ -34,6 +38,8 @@ export default function UploadPanel({
   const [isUploadConfirmOpen, setIsUploadConfirmOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
 
+  const UI_TRUNCATE = 40000;
+
   const handleFileChosen = useCallback(
     async (file: File | null) => {
       if (!file) return;
@@ -42,8 +48,8 @@ export default function UploadPanel({
       setIsExtracting(true);
       try {
         const extracted = await extractTextClient(file);
-        // insert / replace textarea with extracted text (cap for snappy UI)
-        setText(extracted.slice(0, 40000));
+        setFullText(extracted); // store the full text for analysis
+        setText(extracted.slice(0, UI_TRUNCATE)); // UI-friendly truncated copy
         setUploadedFile(file);
         setPendingFile(null);
         setIsUploadConfirmOpen(false);
@@ -54,7 +60,7 @@ export default function UploadPanel({
         setIsExtracting(false);
       }
     },
-    [setText, setUploadedFile]
+    [setText, setUploadedFile, setFullText]
   );
 
   const handleFileUploadInput = useCallback(
@@ -125,7 +131,11 @@ export default function UploadPanel({
           id="text-input"
           placeholder="Paste your academic text here or upload a document using the button above..."
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value;
+            setText(v);
+            setFullText(v);
+          }}
           className="min-h-[350px] resize-none"
         />
 
@@ -133,6 +143,23 @@ export default function UploadPanel({
           <span>{text.length} characters</span>
           <span>{text.split(/\s+/).filter(Boolean).length} words</span>
         </div>
+        {fullText.length > text.length && (
+          <div className="mt-1 flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground">
+              Showing first {UI_TRUNCATE.toLocaleString()} chars of{" "}
+              {fullText.length.toLocaleString()}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setText(fullText); // replace textarea with full text (may be heavy)
+              }}
+              className="underline"
+            >
+              Show full
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Uploaded file visual */}

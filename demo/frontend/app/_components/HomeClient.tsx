@@ -43,6 +43,7 @@ type Question = {
 export default function HomeClient() {
   // input state
   const [text, setText] = useState("");
+  const [fullText, setFullText] = useState("");
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   const { show, hide } = useOverlay();
@@ -111,7 +112,7 @@ export default function HomeClient() {
     setIsGenerating(true);
     try {
       const requestPayload = {
-        text: text,
+        text: fullText && fullText.length > 0 ? fullText : text,
         fact: textBasedQuestions,
         inference: inferentialQuestions,
         main_idea: includeMainIdea ? 1 : 0,
@@ -307,6 +308,8 @@ export default function HomeClient() {
               <UploadPanel
                 text={text}
                 setText={setText}
+                fullText={fullText}
+                setFullText={setFullText}
                 uploadedFile={uploadedFile}
                 setUploadedFile={setUploadedFile}
               />
