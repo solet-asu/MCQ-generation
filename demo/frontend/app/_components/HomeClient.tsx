@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -15,6 +15,7 @@ import ConfigPanel from "./ConfigPanel";
 import dynamic from "next/dynamic";
 import { useOverlay } from "./overlay-store";
 import { postJSON, ApiError } from "@/app/util/api";
+import BlockingOverlay from "./BlockingOverlay";
 
 const QuestionsList = dynamic(() => import("./QuestionsList"), {
   ssr: false,
@@ -42,16 +43,16 @@ type Question = {
 export default function HomeClient() {
   // input state
   const [text, setText] = useState("");
+  const [fullText, setFullText] = useState("");
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [inputMethod, setInputMethod] = useState("paste");
 
   const { show, hide } = useOverlay();
 
   // config state
-  const [textBasedQuestions, setTextBasedQuestions] = useState(5);
-  const [inferentialQuestions, setInferentialQuestions] = useState(3);
+  const [textBasedQuestions, setTextBasedQuestions] = useState(1);
+  const [inferentialQuestions, setInferentialQuestions] = useState(1);
   const [includeMainIdea, setIncludeMainIdea] = useState(true);
-  const [selectedModel, setSelectedModel] = useState("gpt-4");
+  const [selectedModel, setSelectedModel] = useState("gpt-4o");
   const [qualityLevel, setQualityLevel] = useState<"fast" | "high">("fast");
 
   // generation state
@@ -61,6 +62,10 @@ export default function HomeClient() {
 
   // error state
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // abort controller ref for current generation
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const abortedByUserRef = useRef(false);
 
   // Smooth-scroll to the questions after generation finishes (success OR error)
   useEffect(() => {
@@ -92,18 +97,32 @@ export default function HomeClient() {
     setErrorMsg(null); // clear any old error
     setQuestions([]); // clear immediately so old content disappears
     setGenerationId((id) => id + 1);
+
+    // create new abort controller for this generation
+    if (abortControllerRef.current) {
+      // if somehow one exists, abort it first to be safe
+      try {
+        abortControllerRef.current.abort();
+      } catch {}
+    }
+    const ctrl = new AbortController();
+    abortControllerRef.current = ctrl;
+
     show();
     setIsGenerating(true);
     try {
       const requestPayload = {
-        text: text,
+        text: fullText && fullText.length > 0 ? fullText : text,
         fact: textBasedQuestions,
         inference: inferentialQuestions,
         main_idea: includeMainIdea ? 1 : 0,
         quality_first: qualityLevel === "high" ? "yes" : "no",
       };
 
-      const apiData = await postJSON<any[]>("/generate_mcq", requestPayload);
+      // pass the abort signal to postJSON so it can cancel the fetch
+      const apiData = await postJSON<any[]>("/generate_mcq", requestPayload, {
+        signal: ctrl.signal,
+      });
 
       let parsedQuestions: Question[] = [];
       if (
@@ -133,9 +152,13 @@ export default function HomeClient() {
       console.error("Error generating questions:", e);
       setIsGenerating(false);
 
-      // Friendly messages
       let msg = "Something went wrong generating questions.";
-      if (e instanceof ApiError) {
+
+      if (abortedByUserRef.current) {
+        msg = "Generation aborted by user.";
+        // reset the flag
+        abortedByUserRef.current = false;
+      } else if (e instanceof ApiError) {
         if (e.code === "NETWORK")
           msg =
             "Cannot reach the generator. Check your internet connection (or CORS).";
@@ -145,12 +168,35 @@ export default function HomeClient() {
           }`;
         else if (e.code === "PARSE") msg = "Generator returned invalid JSON.";
         else if (e.code === "TIMEOUT")
-          msg = "This took too long and was aborted."; // not used by default
+          msg = "This took too long and was aborted.";
       } else if (e instanceof Error && e.message) {
         msg = e.message;
       }
+
       setErrorMsg(msg);
+    } finally {
+      // cleanup controller ref if it still points to this generation
+      if (abortControllerRef.current === ctrl)
+        abortControllerRef.current = null;
+      abortedByUserRef.current = false;
     }
+  };
+
+  // Abort handler called by the overlay button
+  const handleAbort = () => {
+    // mark as user-abort
+    abortedByUserRef.current = true;
+
+    if (abortControllerRef.current) {
+      try {
+        abortControllerRef.current.abort();
+      } catch {}
+      abortControllerRef.current = null;
+    }
+    hide();
+    setIsGenerating(false);
+    setQuestions([]);
+    setErrorMsg("Generation aborted by user.");
   };
 
   const parseQuestionItem = (item: any, index: number): Question => {
@@ -238,7 +284,7 @@ export default function HomeClient() {
       options,
       correct: correctIndex,
       explanation:
-        apiExplanation || "No explanation was provided by the generator.", // gentle fallback
+        apiExplanation || "No explanation was provided by the generator.",
     };
   };
 
@@ -262,10 +308,10 @@ export default function HomeClient() {
               <UploadPanel
                 text={text}
                 setText={setText}
+                fullText={fullText}
+                setFullText={setFullText}
                 uploadedFile={uploadedFile}
                 setUploadedFile={setUploadedFile}
-                inputMethod={inputMethod}
-                setInputMethod={setInputMethod}
               />
             </CardContent>
           </Card>
@@ -340,6 +386,11 @@ export default function HomeClient() {
           />
         )}
       </div>
+
+      <BlockingOverlay
+        message="ReQUESTA is generating questions"
+        onAbort={handleAbort}
+      />
     </>
   );
 }

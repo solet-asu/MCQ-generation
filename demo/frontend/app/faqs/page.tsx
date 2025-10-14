@@ -41,7 +41,7 @@ export default function FAQsPage() {
       id: "supported-formats",
       question: "What file formats does ReQUESTA support?",
       answer:
-        "You can input text by pasting directly into the platform or by uploading files in PDF, DOC, DOCX, or TXT formats. The system will automatically extract and process the text content from these documents.",
+        "You can input text by pasting directly into the platform or by uploading files in PDF, DOCX, or TXT formats. The system will automatically extract and process the text content from these documents.",
     },
     {
       id: "question-quality",
@@ -59,7 +59,7 @@ export default function FAQsPage() {
       id: "download-options",
       question: "What download options are available?",
       answer:
-        "You can download your questions in PDF, Word (DOCX), or plain text (TXT) formats. You can choose to download questions only, or include answers and explanations. There's also an option to include a separate answer key section.",
+        "You can download your questions in Word (DOCX), or plain text (TXT) formats. You can choose to download questions only, or include answers and explanations. There's also an option to include a separate answer key section.",
     },
     {
       id: "text-length",
@@ -78,24 +78,6 @@ export default function FAQsPage() {
       question: "What educational levels does ReQUESTA support?",
       answer:
         "ReQUESTA is designed for academic content and works well for high school through graduate-level materials. The AI adapts to the complexity and style of your input text to generate appropriately challenging questions.",
-    },
-    {
-      id: "privacy-security",
-      question: "Is my content secure and private?",
-      answer:
-        "Yes, ReQUESTA takes privacy seriously. Your uploaded content is processed securely and is not stored permanently on our servers. We follow ASU's strict data privacy and security guidelines to protect your academic materials.",
-    },
-    {
-      id: "technical-support",
-      question: "What if I encounter technical issues?",
-      answer:
-        "If you experience any technical problems or have questions about using ReQUESTA, you can contact ASU's technical support team. We're committed to providing a smooth experience for all users.",
-    },
-    {
-      id: "cost",
-      question: "Is ReQUESTA free to use?",
-      answer:
-        "ReQUESTA is currently available as part of ASU's educational technology initiatives. Specific pricing and access details may vary depending on your affiliation with ASU or partner institutions.",
     },
     {
       id: "future-features",

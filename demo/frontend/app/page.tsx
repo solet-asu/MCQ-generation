@@ -36,7 +36,7 @@ export default function HomePage() {
               <div className="flex items-center gap-4">
                 <nav className="flex items-center gap-4">
                   <NavLink href="/about">About</NavLink>
-                  <NavLink href="/faqs">FAQs</NavLink>
+                  {/*<NavLink href="/faqs">FAQs</NavLink>*/}
                 </nav>
               </div>
             </div>
@@ -47,7 +47,6 @@ export default function HomePage() {
             <HomeClient />
           </div>
         </main>
-        <BlockingOverlay message="ReQUESTA is generating questions" />
       </OverlayProvider>
     </div>
   );

@@ -1,7 +1,4 @@
 // app/util/api.ts
-// Build-time configurable API base + POST helper with NO timeout by default.
-// No timeout by default because LLMs can be slow sometimes.
-
 export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "").replace(
   /\/$/,
   ""
@@ -17,26 +14,53 @@ export class ApiError extends Error {
   detail?: string;
 }
 
+/**
+ * postJSON
+ * - body: payload
+ * - opts.timeoutMs: number (0 means no timeout)
+ * - opts.headers: custom headers
+ * - opts.signal: optional external AbortSignal to integrate (so caller can abort)
+ */
 export async function postJSON<T = unknown>(
   path: string,
   body: unknown,
-  opts?: { timeoutMs?: number; headers?: Record<string, string> }
+  opts?: {
+    timeoutMs?: number;
+    headers?: Record<string, string>;
+    signal?: AbortSignal;
+  }
 ): Promise<T> {
-  const timeoutMs = opts?.timeoutMs ?? 0; // 0 = **no timeout**
-  const ctrl = new AbortController();
+  const timeoutMs = opts?.timeoutMs ?? 0; // 0 = no timeout
+
+  // internal controller we use for fetch. We wire up external signal to this controller
+  const internalCtrl = new AbortController();
+
+  // If caller passed an external signal, forward its abort to our internal controller
+  let externalAbortListener: (() => void) | null = null;
+  if (opts?.signal) {
+    const ext = opts.signal;
+    externalAbortListener = () => internalCtrl.abort();
+    // If already aborted, abort immediately
+    if (ext.aborted) internalCtrl.abort();
+    else ext.addEventListener("abort", externalAbortListener);
+  }
+
   const timer =
-    timeoutMs > 0 ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+    timeoutMs > 0
+      ? setTimeout(() => {
+          internalCtrl.abort();
+        }, timeoutMs)
+      : null;
 
   try {
     const res = await fetch(api(path), {
       method: "POST",
       headers: { "Content-Type": "application/json", ...(opts?.headers || {}) },
       body: JSON.stringify(body),
-      signal: ctrl.signal,
+      signal: internalCtrl.signal,
     });
 
     if (!res.ok) {
-      // Try to extract a useful error message
       let detail = "";
       try {
         const ct = res.headers.get("content-type") || "";
@@ -70,8 +94,9 @@ export async function postJSON<T = unknown>(
       throw err;
     }
   } catch (e: any) {
+    // Normalize abort -> TIMEOUT so existing code paths that look for TIMEOUT still work.
     if (e?.name === "AbortError") {
-      const err = new ApiError("Request timed out");
+      const err = new ApiError("Request timed out or aborted");
       err.code = "TIMEOUT";
       throw err;
     }
@@ -85,5 +110,10 @@ export async function postJSON<T = unknown>(
     throw err;
   } finally {
     if (timer) clearTimeout(timer);
+    if (opts?.signal && externalAbortListener) {
+      try {
+        opts.signal.removeEventListener("abort", externalAbortListener);
+      } catch {}
+    }
   }
 }

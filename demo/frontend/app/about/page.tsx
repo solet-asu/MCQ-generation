@@ -94,57 +94,6 @@ export default function AboutPage() {
             </CardContent>
           </Card>
 
-          {/* Features Grid */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-asu-maroon">
-                  <FileText className="h-5 w-5" />
-                  Smart Text Analysis
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Advanced AI algorithms analyze academic texts to identify key
-                  concepts, relationships, and learning objectives for optimal
-                  question generation.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-asu-maroon">
-                  <Settings className="h-5 w-5" />
-                  Customizable Settings
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Configure question types, difficulty levels, and cognitive
-                  complexity to match your specific educational goals and
-                  assessment needs.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-asu-maroon">
-                  <Lightbulb className="h-5 w-5" />
-                  Multiple Question Types
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Generate text-based, inferential, and main idea questions that
-                  test different levels of comprehension and critical thinking
-                  skills.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
           {/* How It Works */}
           <Card>
             <CardHeader>
