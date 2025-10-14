@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { saveAs } from "file-saver";
+import { Document, Packer, Paragraph, TextRun } from "docx";
+
 import {
   Card,
   CardContent,
@@ -55,7 +58,7 @@ export default function QuestionsList({ questions, totalQuestions }: Props) {
   }>({});
 
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
-  const [downloadFormat, setDownloadFormat] = useState("pdf");
+  const [downloadFormat, setDownloadFormat] = useState("docx");
   const [contentType, setContentType] = useState("questions-with-answers");
   const [includeAnswerKey, setIncludeAnswerKey] = useState(true);
 
@@ -68,15 +71,161 @@ export default function QuestionsList({ questions, totalQuestions }: Props) {
     console.log(`Regenerating question ${qid}`);
   };
 
-  const handleDownload = () => {
-    const downloadOptions = {
-      format: downloadFormat,
-      contentType,
-      includeAnswerKey,
-      questionsCount: questions.length,
-    };
-    console.log("[v0] Download options:", downloadOptions);
-    setIsDownloadModalOpen(false);
+  const handleDownload = async () => {
+    try {
+      const fileName = `questions_${new Date()
+        .toISOString()
+        .slice(0, 10)}.${downloadFormat}`;
+
+      // Build text version (reused for txt, docx, and pdf)
+      let text = `ReQUESTA - Generated Questions\n\n`;
+      questions.forEach((q, idx) => {
+        text += `Question ${idx + 1} (${q.type}): ${q.question}\n\n`;
+        q.options.forEach((opt, i) => {
+          const letter = String.fromCharCode(65 + i);
+          text += `  ${letter}) ${opt}\n`;
+        });
+
+        if (contentType === "questions-with-answers") {
+          const correctOpt = q.correct >= 0 ? q.options[q.correct] : "N/A";
+          text += `\nCorrect Answer: ${correctOpt}\n`;
+          text += `Explanation: ${q.explanation || "—"}\n`;
+        }
+      });
+
+      if (includeAnswerKey) {
+        text += "\n------------- Answer Key -------------\n";
+        questions.forEach((q, idx) => {
+          const correctLetter =
+            q.correct >= 0 ? String.fromCharCode(65 + q.correct) : "-";
+          text += `Q${idx + 1}: ${correctLetter}\n`;
+        });
+      }
+
+      // Generate by file type
+      if (downloadFormat === "txt") {
+        const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+        saveAs(blob, fileName);
+      }
+      if (downloadFormat === "docx") {
+        const paragraphs: Paragraph[] = [];
+        paragraphs.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "ReQUESTA – Generated Questions",
+                bold: true,
+                size: 32,
+              }),
+            ],
+            alignment: "center",
+            spacing: { after: 300 },
+          })
+        );
+
+        questions.forEach((q, idx) => {
+          paragraphs.push(
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `Question ${idx + 1} (${q.type}):`,
+                  bold: true,
+                  size: 24,
+                }),
+              ],
+              spacing: { after: 120 },
+            })
+          );
+
+          paragraphs.push(
+            new Paragraph({
+              children: [new TextRun({ text: q.question, size: 22 })],
+              spacing: { after: 100 },
+            })
+          );
+
+          q.options.forEach((opt, i) => {
+            const letter = String.fromCharCode(65 + i);
+            paragraphs.push(
+              new Paragraph({
+                children: [
+                  new TextRun({ text: `${letter}) ${opt}`, size: 22 }),
+                ],
+                indent: { left: 720 },
+              })
+            );
+          });
+
+          if (contentType === "questions-with-answers") {
+            const correctOpt = q.correct >= 0 ? q.options[q.correct] : "N/A";
+            paragraphs.push(
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: `Correct Answer: ${correctOpt}`,
+                    bold: true,
+                    size: 22,
+                  }),
+                ],
+                spacing: { before: 120 },
+              })
+            );
+
+            paragraphs.push(
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: `Explanation: ${q.explanation || "—"}`,
+                    italics: true,
+                    size: 22,
+                  }),
+                ],
+                spacing: { after: 200 },
+              })
+            );
+          }
+
+          paragraphs.push(
+            new Paragraph({ children: [], spacing: { after: 200 } })
+          );
+        });
+
+        if (includeAnswerKey) {
+          paragraphs.push(
+            new Paragraph({
+              children: [
+                new TextRun({ text: "Answer Key", bold: true, size: 26 }),
+              ],
+              spacing: { before: 300, after: 200 },
+            })
+          );
+
+          questions.forEach((q, idx) => {
+            const correctLetter =
+              q.correct >= 0 ? String.fromCharCode(65 + q.correct) : "-";
+            paragraphs.push(
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: `Q${idx + 1}: ${correctLetter}`,
+                    size: 22,
+                  }),
+                ],
+              })
+            );
+          });
+        }
+
+        const doc = new Document({ sections: [{ children: paragraphs }] });
+        const blob = await Packer.toBlob(doc);
+        saveAs(blob, fileName);
+      }
+
+      setIsDownloadModalOpen(false);
+    } catch (err) {
+      console.error("Download failed:", err);
+      alert("Something went wrong while generating the file.");
+    }
   };
 
   return (
@@ -221,18 +370,6 @@ export default function QuestionsList({ questions, totalQuestions }: Props) {
                         onValueChange={setDownloadFormat}
                         className="space-y-2"
                       >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="pdf" id="pdf" />
-                          <Label
-                            htmlFor="pdf"
-                            className="cursor-pointer text-sm"
-                          >
-                            PDF Document (.pdf)
-                          </Label>
-                          <span className="text-xs text-muted-foreground ml-2">
-                            - Best for printing and sharing
-                          </span>
-                        </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="docx" id="docx" />
                           <Label

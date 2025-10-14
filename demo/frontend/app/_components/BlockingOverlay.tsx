@@ -6,7 +6,13 @@ import ClientPortal from "./ClientPortal";
 import { useLockBodyScroll } from "./useLockBodyScroll";
 import { useOverlay } from "./overlay-store";
 
-export default function BlockingOverlay({ message }: { message: string }) {
+export default function BlockingOverlay({
+  message,
+  onAbort,
+}: {
+  message: string;
+  onAbort?: () => void;
+}) {
   const { open, lastActiveEl } = useOverlay();
   useLockBodyScroll(open);
 
@@ -78,6 +84,24 @@ export default function BlockingOverlay({ message }: { message: string }) {
               Analyzing your text and crafting questions…
             </p>
           </div>
+
+          {/* Abort button */}
+          {onAbort && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    onAbort();
+                  } catch {}
+                }}
+                className="inline-flex items-center px-4 py-2 rounded-md  bg-white/10 hover:bg-white/20 
+                 text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </ClientPortal>
