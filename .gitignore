@@ -181,12 +181,5 @@ database/
 output/
 notebook/MCQ_Analysis.ipynb
 
-<<<<<<< HEAD
 demo/static
-=======
-
-# Allow frontend lib directory
-!demo/frontend/lib/
-!demo/frontend/lib/**
->>>>>>> 45d2bc3528dcdde7891f47cc5c8497d8cd19d612
 
