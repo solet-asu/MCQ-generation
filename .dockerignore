@@ -15,3 +15,13 @@ notebooks/
 .next/
 node_modules/
 .git/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+.env
+*.ipynb
+demo/frontend/node_modules/
+demo/frontend/.next/
+demo/frontend/out/

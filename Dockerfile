@@ -3,15 +3,17 @@
 # --------------------------
 FROM node:18 AS frontend-builder
 
-# Set working dir and copy frontend files
-WORKDIR /frontend
-COPY frontend/ .
+# Set working directory for frontend build
+WORKDIR /app/demo/frontend
 
-# Install and build
+# Copy only frontend files
+COPY demo/frontend/ .
+
+# Install dependencies and build static site
 RUN npm ci && npm run build
 
 # --------------------------
-# Stage 2: Backend + final image
+# Stage 2: Final backend image
 # --------------------------
 FROM python:3.11-slim
 
@@ -28,11 +30,11 @@ COPY src/ /app/src/
 COPY prompts/ /app/prompts/
 COPY models/ /app/models/
 
-# Copy built frontend into demo/static
-COPY --from=frontend-builder /frontend/out /app/static
+# Copy static site output from frontend build into /app/static
+COPY --from=frontend-builder /app/demo/frontend/out /app/static
 
-# Expose port
+# Expose FastAPI port
 EXPOSE 8080
 
-# Start FastAPI
+# Start the app
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]
