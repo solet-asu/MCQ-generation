@@ -144,5 +144,6 @@ async def health_check():
     """Health check endpoint (public, no auth required)"""
     return {"status": "healthy"}
 
-# Mount the static files directory
+#Keep it at the end of the file
+#Mount the static files directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
