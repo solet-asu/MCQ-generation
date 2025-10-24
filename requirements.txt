@@ -10,3 +10,6 @@ python-Levenshtein
 sentence-transformers>=2.6.1
 torch>=2.2
 pyyaml
+python-jose[cryptography]
+httpx
+python-multipart
