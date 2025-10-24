@@ -125,3 +125,9 @@ class Agent(BaseModel):
             self.most_recent_execution_time = datetime.now() - start_time
             logger.error("Error during async completion: %s", e)
             raise
+
+
+
+
+
+

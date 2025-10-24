@@ -1,4 +1,6 @@
 // app/util/api.ts
+import { getSessionId } from "./session";
+
 export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "").replace(
   /\/$/,
   ""
@@ -53,9 +55,17 @@ export async function postJSON<T = unknown>(
       : null;
 
   try {
+    // Automatically add session ID to headers
+    const sessionId = getSessionId();
+    const headers = {
+      "Content-Type": "application/json",
+      ...(sessionId && { "X-Session-ID": sessionId }), // Add session ID if exists
+      ...(opts?.headers || {}),
+    };
+
     const res = await fetch(api(path), {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...(opts?.headers || {}) },
+      headers,
       body: JSON.stringify(body),
       signal: internalCtrl.signal,
     });

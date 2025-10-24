@@ -12,7 +12,8 @@ const nextConfig = {
     unoptimized: true,
   },
   transpilePackages: ["pdfjs-dist"],
-  output: "export", // for static export
+  output: "export",
+  assetPrefix: "/static",
   experimental: {
     optimizePackageImports: [
       "lucide-react",

@@ -21,9 +21,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 async def check_and_shorten_long_option(
+    session_id:str,
     invocation_id: str,
     mcq: str,
     mcq_answer: str,
+    api_token: Optional[str]=None,
     model: str = "gpt-4o",
 ) -> Tuple[str, str, Dict]:
     """Shorten an outlier option if needed and return:
@@ -52,6 +54,8 @@ async def check_and_shorten_long_option(
 
     # ---- Step 3: Analyze syntactic structure (async) ----
     identified_rule_meta = await syntactic_analysis(
+        session_id=session_id,
+        api_token=api_token,
         invocation_id=invocation_id,
         model=model,
         temperature=0.3,
@@ -67,6 +71,8 @@ async def check_and_shorten_long_option(
 
     # ---- Step 5: Generate candidates (async) ----
     cand_meta = await generate_candidate_short_options(
+        session_id=session_id,
+        api_token=api_token,
         invocation_id=invocation_id,
         model=model,
         options=options,
@@ -94,6 +100,8 @@ async def check_and_shorten_long_option(
 
     # ---- Step 6: Select best candidate (async) ----
     selection_meta = await select_best_candidate(
+        session_id=session_id,
+        api_token=api_token,
         invocation_id=invocation_id,
         model=model,
         options=options,

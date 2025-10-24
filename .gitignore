@@ -181,5 +181,10 @@ database/
 output/
 notebook/MCQ_Analysis.ipynb
 
-demo/static
 
+# Allow frontend lib directory
+!demo/frontend/lib/
+!demo/frontend/lib/**
+
+.vscode/launch.json
+demo/static/*

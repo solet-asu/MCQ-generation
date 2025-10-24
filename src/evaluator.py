@@ -1,19 +1,22 @@
 import logging
 from typing import Dict, Optional
 from src.prompt_fetch import get_prompts
-from src.agent import Agent
+from src.agent_createAI import Agent
 from src.general import *
 from src.database_handler import *
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-async def generate_evaluation(invocation_id: str, 
-                       model: str, 
-                       mcq_metadata: Dict, # extract the mcq and answer from the metadata
-                       task: Dict, # get the source text and context
-                       table_name: str = "evaluation_metadata", 
-                       database_file: str = '../database/mcq_metadata.db') -> Dict:
+async def generate_evaluation(
+            session_id: str,
+            api_token: Optional[str],
+            invocation_id: str, 
+            model: str, 
+            mcq_metadata: Dict, # extract the mcq and answer from the metadata
+            task: Dict, # get the source text and context
+            table_name: str = "evaluation_metadata", 
+            database_file: str = '../database/mcq_metadata.db') -> Dict:
     """Generate evaluation for a question and store metadata."""
     
     create_table(table_name, database_file)
@@ -30,12 +33,15 @@ async def generate_evaluation(invocation_id: str,
     )
 
     evaluation_generation_agent = Agent(
+        session_id=session_id,
+        api_token=api_token,
         model=model,
         system_prompt=system_prompt,
-        user_prompt=user_prompt
+        user_prompt=user_prompt,
+        response_format={"type": "json_object"}
     )
     
-    generated_text = await evaluation_generation_agent.completion_generation(response_format={"type": "json_object"})
+    generated_text = await evaluation_generation_agent.completion_generation()
     evaluation_metadata = evaluation_generation_agent.get_metadata()
     evaluation_metadata.update({
         "invocation_id": invocation_id,
