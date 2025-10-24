@@ -145,10 +145,6 @@ async def health_check():
     return {"status": "healthy"}
 
 
-@app.get("/{full_path:path}")
-async def catch_all(full_path: str):
-    return FileResponse("static/index.html")
-
 
 
 #Keep it at the end of the file
