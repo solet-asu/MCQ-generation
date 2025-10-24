@@ -72,7 +72,7 @@ async def read_root(request: Request, projectWebToken: str = None):
     
     # Normal access - user already has valid token (checked by middleware)
     # Redirect to the main application page
-    return RedirectResponse(url="/static/index.html")
+    return RedirectResponse(url="/index.html")
 
 
 @app.get("/auth/user")
@@ -146,4 +146,4 @@ async def health_check():
 
 #Keep it at the end of the file
 #Mount the static files directory
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
