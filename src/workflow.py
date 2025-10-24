@@ -7,7 +7,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from src.text_processing import add_chunk_markers
 from src.planner import generate_plan
@@ -20,7 +20,9 @@ logger = logging.getLogger(__name__)
 
 
 async def question_generation_workflow(
-    text: str,
+    session_id:str,
+    api_token: Optional[str]=None,
+    text: str="",
     *,
     fact: int,
     inference: int,
@@ -71,6 +73,8 @@ async def question_generation_workflow(
 
     # ---- Step 2: plan generation ----
     plan = await generate_plan(
+        session_id=session_id,
+        api_token=api_token,
         invocation_id=invocation_id,
         model=model,
         text=chunked_text,
@@ -91,6 +95,8 @@ async def question_generation_workflow(
     # ---- Step 4: question generation ----
     if quality_first:
         questions_list = await generate_all_mcqs_quality_first(
+            session_id=session_id,
+            api_token=api_token,
             task_list=task_list,
             invocation_id=invocation_id,
             model=model,
@@ -104,6 +110,8 @@ async def question_generation_workflow(
         )
     else:
         questions_list = await generate_all_mcqs(
+            session_id=session_id,
+            api_token=api_token,
             task_list=task_list,
             invocation_id=invocation_id,
             model=model,
@@ -120,18 +128,13 @@ async def question_generation_workflow(
     logger.info("Questions reformatted", extra=log_extra)
 
     # ---- Step 6: persist workflow metadata ----
-    # Compute token totals defensively (values may be str/None/int)
-    total_input_tokens = sum(int(item.get("input_tokens") or 0) for item in reformatted_questions)
-    total_output_tokens = sum(int(item.get("output_tokens") or 0) for item in reformatted_questions)
-
     elapsed = time.perf_counter() - t0
 
     workflow_metadata = {
         "invocation_id": invocation_id,
         "output": json.dumps(reformatted_questions, ensure_ascii=False),
         "execution_time": f"{elapsed:.6f}",
-        "input_tokens": total_input_tokens,
-        "output_tokens": total_output_tokens,
+
     }
 
     # Run blocking DB operations off the event loop

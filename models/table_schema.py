@@ -3,6 +3,8 @@ from typing import Dict
 TABLE_SCHEMAS: Dict[str, Dict[str, str]] = {
         "plan_metadata": {
         "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "session_id": "TEXT",
+        "api_token": "TEXT",
         "invocation_id": "TEXT",
         "system_prompt": "TEXT",
         "user_prompt": "TEXT",
@@ -18,6 +20,8 @@ TABLE_SCHEMAS: Dict[str, Dict[str, str]] = {
     },
         "mcq_metadata": {
         "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "session_id": "TEXT",
+        "api_token": "TEXT",
         "invocation_id": "TEXT",
         "question_type": "TEXT",
         "system_prompt": "TEXT",
@@ -26,6 +30,7 @@ TABLE_SCHEMAS: Dict[str, Dict[str, str]] = {
         "completion": "TEXT",
         "mcq": "TEXT",
         "mcq_answer": "TEXT",
+        "explanation": "TEXT",
         "chunk": "TEXT",
         "execution_time": "TEXT",
         "input_tokens": "INTEGER",
@@ -34,6 +39,8 @@ TABLE_SCHEMAS: Dict[str, Dict[str, str]] = {
     },
         "syntactic_analysis_metadata": {
         "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "session_id": "TEXT",
+        "api_token": "TEXT",
         "invocation_id": "TEXT",
         "question_stem": "TEXT",
         "options": "TEXT",
@@ -52,6 +59,8 @@ TABLE_SCHEMAS: Dict[str, Dict[str, str]] = {
 
         "candidate_shortening_metadata": {
         "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "session_id": "TEXT",
+        "api_token": "TEXT",
         "invocation_id": "TEXT",
         "option_to_shorten": "TEXT",
         "syntactic_rule": "TEXT",
@@ -71,6 +80,8 @@ TABLE_SCHEMAS: Dict[str, Dict[str, str]] = {
 
         "candidate_selection_metadata": {
         "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "session_id": "TEXT",
+        "api_token": "TEXT",
         "invocation_id": "TEXT",
         "option_to_shorten": "TEXT",
         "syntactic_rule": "TEXT",
@@ -92,6 +103,8 @@ TABLE_SCHEMAS: Dict[str, Dict[str, str]] = {
 
         "evaluation_metadata": {
         "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "session_id": "TEXT",
+        "api_token": "TEXT",
         "invocation_id": "TEXT",
         "question_type": "TEXT",
         "mcq": "TEXT",
@@ -101,6 +114,7 @@ TABLE_SCHEMAS: Dict[str, Dict[str, str]] = {
         "user_prompt": "TEXT",
         "model": "TEXT",
         "completion": "TEXT",
+        "explanation": "TEXT",
         "evaluation": "TEXT",
         "revised_mcq": "TEXT",
         "revised_answer": "TEXT",
@@ -113,6 +127,8 @@ TABLE_SCHEMAS: Dict[str, Dict[str, str]] = {
 
         "ranking_metadata": {
         "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "session_id": "TEXT",
+        "api_token": "TEXT",
         "invocation_id": "TEXT",
         "question_type": "TEXT",
         "content": "TEXT",
@@ -125,17 +141,19 @@ TABLE_SCHEMAS: Dict[str, Dict[str, str]] = {
         "completion": "TEXT",
         "mcq": "TEXT",
         "mcq_answer": "TEXT",
+        "explanation": "TEXT",
         "execution_time": "TEXT",
         "input_tokens": "INTEGER",
         "output_tokens": "INTEGER",
         "timestamp": "TEXT"
     },
         "workflow_metadata": {
+        "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "session_id": "TEXT",
+        "api_token": "TEXT",
         "invocation_id": "TEXT",
         "output": "TEXT",
         "execution_time": "TEXT",
-        "input_tokens": "INTEGER",
-        "output_tokens": "INTEGER",
         "timestamp": "TEXT"
     }
 

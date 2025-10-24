@@ -22,6 +22,7 @@ dependencies = [
     "python-dotenv",
     "spacy",
     "python-Levenshtein",
+    "httpx",
         
     # for cosine_similarity_analysis
     "sentence-transformers>=2.6.1",

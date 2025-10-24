@@ -3,7 +3,7 @@ import logging
 from typing import Dict, Optional, Any, List, Mapping, Sequence
 from collections import defaultdict
 from src.prompt_fetch import get_prompts
-from src.agent import Agent
+from src.agent_createAI import Agent
 from src.general import *
 from src.database_handler import *
 from src.evaluator import generate_evaluation
@@ -82,6 +82,8 @@ def _normalize_answer_text(mcq_text: str, ans: str) -> str:
 
 
 async def generate_mcq(
+    session_id: str,
+    api_token: Optional[str],
     invocation_id: str,
     model: str,
     task: Dict,
@@ -136,9 +138,12 @@ async def generate_mcq(
         )
 
     question_generation_agent = Agent(
+        session_id=session_id,
+        api_token=api_token,
         model=model,
         system_prompt=system_prompt,
-        user_prompt=user_prompt
+        user_prompt=user_prompt,
+        response_format={"type": "text"}
     )
 
     # Retry logic for generating a question with valid options (max 3 attempts)
@@ -172,7 +177,7 @@ async def generate_mcq(
                     )
             else:
                 logger.warning(f"Falling back to MCQ agent (try {generation_try}).")
-                mcq_metadata["mcq"] = await extract_mcq_with_agent(generated_text, model=model)  # TODO need to move this somewhere done the line
+                mcq_metadata["mcq"] = await extract_mcq_with_agent(session_id, api_token, generated_text, model=model)  # TODO need to move this somewhere done the line
                 used_mcq_extractor = True
                 # Validate again after extractor
                 if not _has_all_four_options(mcq_metadata["mcq"]):
@@ -206,13 +211,15 @@ async def generate_mcq(
             logger.warning("Falling back to answer agent.")
             # Use generated_text if available; otherwise use mcq text
             source_text = generated_text if generated_text else mcq_metadata["mcq"]
-            raw_ans = await extract_answer_with_agent(source_text, model=model)
+            raw_ans = await extract_answer_with_agent(session_id, api_token, source_text, model=model)
             mcq_metadata["mcq_answer"] = _normalize_answer_text(
                 mcq_metadata.get("mcq", ""), raw_ans
             )
 
         # Use the shorten workflow to check and shorten long options if needed
         updated_mcq, updated_mcq_answer, token_usage = await check_and_shorten_long_option(
+            session_id=session_id,
+            api_token=api_token,
             invocation_id=invocation_id,
             mcq=mcq_metadata.get("mcq", ""),
             mcq_answer=mcq_metadata.get("mcq_answer", ""),
@@ -225,6 +232,8 @@ async def generate_mcq(
 
         # Evaluate the generated question
         evaluation_meta = await generate_evaluation(
+            session_id=session_id,
+            api_token=api_token,
             invocation_id=invocation_id,
             model=model,
             mcq_metadata=mcq_metadata,
@@ -254,10 +263,15 @@ async def generate_mcq(
                 status = evaluation_meta_dict.get("evaluation")
                 if status == "YES":
                     logger.info("Evaluation passed successfully.")
+                    # add explanation to mcq_metadata
+                    mcq_metadata["explanation"] = evaluation_meta_dict.get("explanation", "")
                 elif status == "REVISED":
                     logger.info("Evaluation revised successfully.")
+                    explanation = evaluation_meta_dict.get("explanation", "")
                     revised_mcq = evaluation_meta_dict.get("revised_mcq", "")
                     revised_answer = evaluation_meta_dict.get("revised_answer", "")
+                    if explanation:
+                        mcq_metadata["explanation"] = explanation
                     if revised_mcq:
                         mcq_metadata["mcq"] = revised_mcq
                     if revised_answer:
@@ -272,6 +286,8 @@ async def generate_mcq(
                         task["previous_answer"] = mcq_metadata.get("mcq_answer", "No answer")
                         task["evaluation_reasoning"] = evaluation_meta_dict.get("reasoning", "No reasoning")
                         return await generate_mcq(
+                            session_id= session_id,
+                            api_token=api_token,
                             invocation_id=invocation_id,
                             model=model,
                             task=task,
@@ -294,6 +310,8 @@ async def generate_mcq(
 
 
 async def generate_candidate_mcqs_async(
+    session_id:str,
+    api_token: Optional[str],
     invocation_id: str,
     model: str,
     task: Dict,
@@ -308,9 +326,16 @@ async def generate_candidate_mcqs_async(
     """
     try:
         mcq_metadata = await generate_mcq(
-            invocation_id, model, task,
-            mcq_table_name, evaluation_table_name, database_file,
-            max_attempt, attempt
+            session_id=session_id,
+            api_token=api_token,
+            invocation_id=invocation_id, 
+            model=model, 
+            task=task,
+            mcq_table_name=mcq_table_name, 
+            evaluation_table_name=evaluation_table_name, 
+            database_file=database_file,
+            max_attempt= max_attempt, 
+            attempt= attempt
         )
         return mcq_metadata
     except Exception as e:
@@ -320,6 +345,8 @@ async def generate_candidate_mcqs_async(
 
 
 async def generate_mcq_quality_first(
+    session_id:str,
+    api_token: Optional[str],
     invocation_id: str,
     model: str,
     task: Dict,
@@ -355,9 +382,16 @@ async def generate_mcq_quality_first(
     # Generate multiple candidate questions concurrently
     tasks = [
         generate_candidate_mcqs_async(
-            invocation_id, model, task,
-            mcq_metadata_table_name, evaluation_metadata_table_name,
-            database_file, max_attempt, attempt
+            session_id=session_id,
+            api_token=api_token,
+            invocation_id=invocation_id, 
+            model=model, 
+            task=task,
+            mcq_metadata_table_name=mcq_metadata_table_name, 
+            evaluation_metadata_table_name=evaluation_metadata_table_name,
+            database_file=database_file, 
+            max_attempt= max_attempt, 
+            attempt= attempt
         )
         for _ in range(candidate_num)
     ]
@@ -370,7 +404,9 @@ async def generate_mcq_quality_first(
             candidate_questions.append({
                 "question_number": i,
                 "question": mcq["mcq"],
-                "answer": mcq["mcq_answer"]
+                "answer": mcq["mcq_answer"],
+                "explanation": mcq.get("explanation", "")
+
             })
 
     # Set up prompts for the ranking model
@@ -391,9 +427,12 @@ async def generate_mcq_quality_first(
 
     # Initialize the agent with the prompt
     ranking_agent = Agent(
+        session_id=session_id,
+        api_token=api_token,
         model=model,
         system_prompt=system_prompt,
-        user_prompt=user_prompt
+        user_prompt=user_prompt,
+        response_format={"type": "json_object"}
     )
 
     # Attempt to generate the plan
@@ -442,21 +481,26 @@ async def generate_mcq_quality_first(
         if candidate_questions:
             selected_mcq = candidate_questions[selected_mcq_num_int]["question"]
             selected_mcq_answer = candidate_questions[selected_mcq_num_int]["answer"]
+            selected_mcq_explanation = candidate_questions[selected_mcq_num_int].get("explanation", "")
 
         ranking_metadata.update({
             "completion": generated_text,
             "mcq": selected_mcq,
-            "mcq_answer": selected_mcq_answer
+            "mcq_answer": selected_mcq_answer,
+            "explanation": selected_mcq_explanation
+
         })
     else:
         logger.warning("Failed to generate a ranking; defaulting to first candidate if available.")
         if candidate_questions:
             selected_mcq = candidate_questions[0]["question"]
             selected_mcq_answer = candidate_questions[0]["answer"]
+            selected_mcq_explanation = candidate_questions[0].get("explanation", "")
         ranking_metadata.update({
             "completion": "No ranking generated; chose first candidate if available.",
             "mcq": selected_mcq,
-            "mcq_answer": selected_mcq_answer
+            "mcq_answer": selected_mcq_answer,
+            "explanation": selected_mcq_explanation
         })
 
     # Insert the metadata into the database
@@ -465,7 +509,7 @@ async def generate_mcq_quality_first(
     return ranking_metadata
 
 
-async def extract_answer_with_agent(generated_text: str, model: str = "gpt-3.5-turbo") -> str:
+async def extract_answer_with_agent(session_id: str, api_token: Optional[str], generated_text: str, model: str = "gpt-3.5-turbo") -> str:
     """Extract the answer from the generated text using an agent."""
     try:
         prompts = get_prompts("mcq_answer_extractor_prompts.yaml")
@@ -473,15 +517,18 @@ async def extract_answer_with_agent(generated_text: str, model: str = "gpt-3.5-t
         logger.error("Answer extractor prompt load failed: %s", e)
         prompts = {"system_prompt": "", "user_prompt": "Extract the answer from:\n{text}"}
     agent = Agent(
+        session_id=session_id,
+        api_token=api_token,
         model=model,
         system_prompt=prompts.get("system_prompt", ""),
-        user_prompt=prompts.get("user_prompt", "").format_map(defaultdict(str, {"text": generated_text}))
+        user_prompt=prompts.get("user_prompt", "").format_map(defaultdict(str, {"text": generated_text})),
+        response_format={"type": "text"}
     )
     result = await agent.completion_generation()
     return result or "Sorry, the answer for this question was not provided."
 
 
-async def extract_mcq_with_agent(generated_text: str, model: str = "gpt-3.5-turbo") -> str:
+async def extract_mcq_with_agent(session_id: str, api_token: Optional[str], generated_text: str, model: str = "gpt-3.5-turbo") -> str:
     """Extract the MCQ from the generated text using an agent."""
     try:
         prompts = get_prompts("mcq_extractor_prompts.yaml")
@@ -489,15 +536,20 @@ async def extract_mcq_with_agent(generated_text: str, model: str = "gpt-3.5-turb
         logger.error("MCQ extractor prompt load failed: %s", e)
         prompts = {"system_prompt": "", "user_prompt": "Extract the MCQ from:\n{text}"}
     agent = Agent(
+        session_id=session_id,
+        api_token=api_token,
         model=model,
         system_prompt=prompts.get("system_prompt", ""),
-        user_prompt=prompts.get("user_prompt", "").format_map(defaultdict(str, {"text": generated_text}))
+        user_prompt=prompts.get("user_prompt", "").format_map(defaultdict(str, {"text": generated_text})),
+        response_format={"type": "text"}
     )
     result = await agent.completion_generation()
     return result or "Sorry, We couldn't generate a multiple-choice question for you."
 
 
 async def generate_all_mcqs(
+    session_id:str,
+    api_token: Optional[str],
     task_list: Sequence[Mapping[str, Any]],
     invocation_id: str,
     *,
@@ -513,6 +565,8 @@ async def generate_all_mcqs(
     async def _run(task: Mapping[str, Any]) -> Dict[str, Any]:
         async with sem:
             return await generate_mcq(
+                session_id=session_id,
+                api_token=api_token,
                 invocation_id=invocation_id,
                 model=model,
                 task=task,
@@ -529,6 +583,8 @@ async def generate_all_mcqs(
 
 
 async def generate_all_mcqs_quality_first(
+    session_id:str,
+    api_token: Optional[str],
     task_list: Sequence[Mapping[str, Any]],
     invocation_id: str,
     *,
@@ -547,6 +603,8 @@ async def generate_all_mcqs_quality_first(
     async def _run(task: Mapping[str, Any]) -> Dict[str, Any]:
         async with sem:
             return await generate_mcq_quality_first(
+                session_id=session_id,
+                api_token=api_token,
                 invocation_id=invocation_id,
                 model=model,
                 task=task,

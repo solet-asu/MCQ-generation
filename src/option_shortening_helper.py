@@ -7,7 +7,7 @@ import numpy as np
 import json
 import re
 
-from src.agent import Agent
+from src.agent_createAI import Agent
 from src.general import count_words, extract_json_string, extract_mcq_components
 from src.prompt_fetch import get_prompts
 from src.database_handler import *
@@ -20,20 +20,21 @@ logger = logging.getLogger(__name__)
 _MIN_WORDS = 10
 _THRESH_10_TO_15 = 0.30  # 30% longer than 2nd-longest when 10..15 words
 _THRESH_GT_15 = 0.20     # 20% longer than 2nd-longest when >15 words
+_THRESH_MI_15 = 0.15
 
 
 def identify_longer_options(
     options: Sequence[Optional[str]],
     *,
     min_words: int = 10,
-    thresh_10_to_15: float = 0.30,  # 30% longer than 2nd-longest when 10..15 words
+    thresh_10_to_15: float = 0.20,  # 20% longer than 2nd-longest when 10..15 words
     thresh_gt_15: float = 0.20,     # 20% longer when >15 words
 ) -> Tuple[int, str]:
     """Return (index, option_text) if a noticeably longer option exists, else (-1, '').
 
     Rules (across ALL A–D options):
       1) Longest option must be >= min_words.
-      2) If longest has 10..15 words, it must be ≥30% longer than 2nd-longest.
+      2) If longest has 10..15 words, it must be ≥20% longer than 2nd-longest.
       3) If longest has >15 words, it must be ≥20% longer than 2nd-longest.
 
     Args:
@@ -86,6 +87,8 @@ def _normalize_options(opts: Sequence[Optional[str]]) -> List[str]:
 
 
 async def syntactic_analysis(
+        session_id:str,
+        api_token: Optional[str],
         invocation_id:str,
         model: str = "gpt-4o", 
         temperature: float =0.3,
@@ -119,13 +122,16 @@ async def syntactic_analysis(
     )
 
     syntactic_analyzer = Agent(
+        session_id=session_id,
+        api_token=api_token,
         model=model,
         temperature=temperature,
         system_prompt=system_prompt,
-        user_prompt=user_prompt
+        user_prompt=user_prompt,
+        response_format={"type": "json_object"}
     )
     
-    generated_text = await syntactic_analyzer.completion_generation(response_format={"type": "json_object"})
+    generated_text = await syntactic_analyzer.completion_generation()
     syntactic_analysis_metadata = syntactic_analyzer.get_metadata()
     syntactic_analysis_metadata.update({
         "invocation_id": invocation_id,
@@ -190,6 +196,8 @@ def calculate_length_range(options: Sequence[Optional[str]]) -> Tuple[int, int]:
 
 
 async def generate_candidate_short_options(
+    session_id:str,
+    api_token: Optional[str],
     invocation_id: str,
     model: str, 
     options: List[str],
@@ -235,8 +243,8 @@ async def generate_candidate_short_options(
         )
 
     # LLM call
-    candidate_generator = Agent(model=model, system_prompt=system_prompt, user_prompt=user_prompt)
-    generated_text = await candidate_generator.completion_generation(response_format={"type": "json_object"})
+    candidate_generator = Agent(session_id=session_id, api_token=api_token, model=model, system_prompt=system_prompt, user_prompt=user_prompt, response_format={"type": "json_object"})
+    generated_text = await candidate_generator.completion_generation()
 
     meta = candidate_generator.get_metadata() or {}
     meta.update({
@@ -246,8 +254,6 @@ async def generate_candidate_short_options(
         "min_target": min_target,
         "max_target": max_target,
     })
-
-
 
     candidates_list: List[str] = []
     reasoning: str = ""
@@ -310,6 +316,8 @@ def cosine_similarity_analysis(original_text: str, shortened_text: str, model: O
 
 # select best candidate
 async def select_best_candidate(
+    session_id:str,
+    api_token: Optional[str],
     invocation_id: str,
     model: str,
     options: List[str],
@@ -405,8 +413,8 @@ async def select_best_candidate(
         )
 
     # ---- LLM call ----
-    candidate_selector = Agent(model=model, system_prompt=system_prompt, user_prompt=user_prompt)
-    generated_text = await candidate_selector.completion_generation(response_format={"type": "json_object"})
+    candidate_selector = Agent(session_id=session_id, api_token=api_token, model=model, system_prompt=system_prompt, user_prompt=user_prompt, response_format={"type": "json_object"})
+    generated_text = await candidate_selector.completion_generation()
     meta = candidate_selector.get_metadata() or {}
     meta.update({
         "invocation_id": invocation_id,
