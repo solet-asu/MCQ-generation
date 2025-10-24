@@ -22,11 +22,12 @@ dependencies = [
     "python-dotenv",
     "spacy",
     "python-Levenshtein",
-    "httpx",
-        
+    "httpx",   
     # for cosine_similarity_analysis
     "sentence-transformers>=2.6.1",
     "torch>=2.2",
+    "python-jose[cryptography]",
+    "python-multipart"
 ]
 
 [tool.setuptools]
