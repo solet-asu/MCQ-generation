@@ -102,7 +102,7 @@ Copy exported files into the backend static folder (so FastAPI can serve them):
 ```bash
 # macOS / Linux (from demo/frontend)
 rm -rf ../static/*
-cp -r out/* ../static/
+mkdir -p ../static && cp -r out/* ../static/
 ```
 
 Windows (PowerShell):
