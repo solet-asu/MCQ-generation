@@ -93,7 +93,6 @@ Build and export static site:
 
 ```bash
 npm run build
-npm run export
 ```
 
 This produces a static `out/` directory (Next.js exported site). Note: depending on your `package.json` scripts, `npm run export` may be `next export` or combined with `build` (adjust if necessary).
@@ -103,7 +102,7 @@ Copy exported files into the backend static folder (so FastAPI can serve them):
 ```bash
 # macOS / Linux (from demo/frontend)
 rm -rf ../static/*
-cp -r out/* ../static/
+mkdir -p ../static && cp -r out/* ../static/
 ```
 
 Windows (PowerShell):
