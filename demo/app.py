@@ -36,6 +36,7 @@ app.add_middleware(AuthMiddleware)
 
 # Mount the static files directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/pdf", StaticFiles(directory="pdf"), name="pdf")
 
 
 @app.get("/")
