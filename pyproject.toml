@@ -27,7 +27,9 @@ dependencies = [
     "sentence-transformers>=2.6.1",
     "torch>=2.2",
     "python-jose[cryptography]",
-    "python-multipart"
+    "python-multipart",
+    "websockets==10.4",
+    "websocket-client",
 ]
 
 [tool.setuptools]
