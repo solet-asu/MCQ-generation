@@ -68,7 +68,7 @@ class Agent(BaseModel):
         *,
         timeout_seconds: float = 300.0,
         ping_interval: Optional[float] = None,
-        auth_preference: str = "auto",  # "auto" | "header" | "query"
+        auth_preference: str = "query",  # "auto" | "header" | "query"
         origin: Optional[str] = None,
         subprotocols: Optional[List[str]] = None,
         extra_headers: Optional[List[Tuple[str, str]]] = None,

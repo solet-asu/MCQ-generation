@@ -558,7 +558,7 @@ async def generate_all_mcqs(
     evaluation_metadata_table_name: str = "evaluation_metadata",
     database_file: str = "../database/mcq_metadata.db",
     max_attempt: int = 3,
-    concurrency: int = 30,  # NEW
+    concurrency: int = 4,  # NEW
 ) -> List[Dict[str, Any]]:
     sem = asyncio.Semaphore(max(1, concurrency))
 
@@ -596,7 +596,7 @@ async def generate_all_mcqs_quality_first(
     max_attempt: int = 3,
     attempt: int = 1,
     candidate_num: int = 5,
-    concurrency: int = 30,  # NEW
+    concurrency: int = 4,  # NEW
 ) -> List[Dict[str, Any]]:
     sem = asyncio.Semaphore(max(1, concurrency))
 
