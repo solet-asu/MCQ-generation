@@ -63,6 +63,7 @@ class Agent(BaseModel):
         Returns the final assembled string. If the assembled output is JSON, returns a JSON string.
         """
 
+        # Ensure token present
         if not self.api_token:
             self.api_token = os.getenv("CreateAI_KEY")
             if not self.api_token:
@@ -110,6 +111,11 @@ class Agent(BaseModel):
                 return "<empty>"
             return (text[:max_len] + "...") if len(text) > max_len else text
 
+        def _masked_token(t: Optional[str]) -> str:
+            if not t:
+                return "<empty>"
+            return f"***{t[-4:]}" if len(t) > 8 else "***"
+
         def _make_headers(include_auth: bool) -> List[Tuple[str, str]]:
             headers: List[Tuple[str, str]] = []
             if include_auth:
@@ -127,7 +133,7 @@ class Agent(BaseModel):
             elif isinstance(val, list):
                 for item in val:
                     if isinstance(item, dict):
-                        out_acc.append(json.dumps(item))
+                        out_acc.append(json.dumps(item, ensure_ascii=False))
                     elif isinstance(item, str):
                         out_acc.append(item)
                     else:
@@ -140,35 +146,62 @@ class Agent(BaseModel):
             Connect in the given mode and run the receive loop.
             Collect both:
                - frames: exact raw frames in arrival order (for final join)
-               - final_parts: streaming normalized pieces for 'delta' and other cases
+               - final_parts: streaming normalized pieces for delta/response
             Return assembled response string if completed here, or None if no content and no finalization.
             """
             if mode == "header":
                 url = wss_base
                 headers_list = _make_headers(include_auth=True)
             else:
+                # NOTE: per your instruction we still build the token-in-URL form for now
                 url = wss_base.rstrip("/") + f"/?access_token={quote_plus(token)}"
                 headers_list = _make_headers(include_auth=False)
 
-            logger.debug("Attempting connect (mode=%s) url=%s headers=%s", mode, _safe_snippet(url, 200), bool(headers_list))
+            logger.debug(
+                "Attempting connect (mode=%s) url=%s headers=%s",
+                mode,
+                _safe_snippet(url, 200),
+                # avoid printing token value in logs
+                [(k, (v if k.lower() != "authorization" else _masked_token(v))) for k, v in headers_list],
+            )
 
-            frames: List[str] = []         # store raw received frames in order
-            final_parts: List[str] = []    # normalized streaming parts for delta/response
+            frames: List[str] = []  # store raw received frames in order
+            final_parts: List[str] = []  # normalized streaming parts for delta/response
             buffer = ""
             decoder = json.JSONDecoder()
 
-            async with websockets.connect(url, extra_headers=headers_list, ping_interval=ping_interval, subprotocols=subprotocols, open_timeout=15) as ws:
+            # per-read timeout and memory caps
+            recv_timeout = min(60.0, timeout_seconds)
+            MAX_FRAMES = 20000
+            MAX_TOTAL_BYTES = 10 * 1024 * 1024  # 10 MB
+
+            ws = None
+            try:
+                # create connection and ensure we close it in finally (important for cancellations)
+                ws = await websockets.connect(
+                    url,
+                    extra_headers=headers_list,
+                    ping_interval=ping_interval,
+                    subprotocols=subprotocols,
+                    open_timeout=15,
+                )
                 logger.debug("Handshake succeeded (mode=%s)", mode)
                 await ws.send(json.dumps(payload))
 
+                total_bytes = 0
                 while True:
                     try:
-                        raw = await ws.recv()
+                        raw = await asyncio.wait_for(ws.recv(), timeout=recv_timeout)
+                    except asyncio.TimeoutError:
+                        # No frame in recv_timeout seconds. Continue waiting to allow slow streams.
+                        logger.debug("recv() timed out after %s seconds (mode=%s), continuing", recv_timeout, mode)
+                        continue
                     except ConnectionClosedError:
                         logger.info("Connection closed by server (mode=%s)", mode)
                         break
                     except asyncio.CancelledError:
-                        logger.info("Receive cancelled")
+                        logger.info("Receive cancelled (mode=%s)", mode)
+                        # re-raise so outer wait_for/cancel sees it
                         raise
 
                     if raw is None:
@@ -181,22 +214,24 @@ class Agent(BaseModel):
 
                     # record raw frame *as received* for final assembly
                     frames.append(raw)
+                    total_bytes += len(raw)
+                    if len(frames) > MAX_FRAMES or total_bytes > MAX_TOTAL_BYTES:
+                        raise RuntimeError("Exceeded frame or byte limits (possible memory exhaustion)")
 
                     logger.debug("Frame snippet: %s", _safe_snippet(raw, 200))
                     buffer += raw
 
-                    # Quick EOS detection by looking at the raw frames concatenation (buffer includes all raws)
-                    if eos_marker and eos_marker in buffer:
-                        logger.debug("Detected EOS marker in buffer (mode=%s). Finalizing.", mode)
-                        # Build final string from raw frames to preserve structure and spacing
-                        joined_raw = "".join(frames).replace(eos_marker, "")
+                    # Quick EOS detection (prefer removing trailing marker only)
+                    if eos_marker and buffer.endswith(eos_marker):
+                        logger.debug("Detected trailing EOS marker in buffer (mode=%s). Finalizing.", mode)
+                        joined_raw = "".join(frames)
+                        if joined_raw.endswith(eos_marker):
+                            joined_raw = joined_raw[: -len(eos_marker)]
                         trimmed = joined_raw.strip()
-                        # If looks like JSON, attempt to parse and return valid JSON string
                         if trimmed.startswith("{") or trimmed.startswith("["):
                             try:
                                 parsed = json.loads(trimmed)
-                                result = json.dumps(parsed, ensure_ascii=False)
-                                return result
+                                return json.dumps(parsed, ensure_ascii=False)
                             except Exception:
                                 return joined_raw
                         return joined_raw
@@ -205,7 +240,7 @@ class Agent(BaseModel):
                     chunks: List[str] = []
                     if "\n" in buffer:
                         parts = buffer.split("\n")
-                        buffer = parts.pop()
+                        buffer = parts.pop()  # leftover (possibly partial)
                         chunks = parts
                     else:
                         stripped = buffer.strip()
@@ -220,14 +255,17 @@ class Agent(BaseModel):
                         try:
                             data = json.loads(chunk)
                         except Exception:
+                            # be defensive with WHITESPACE.match
+                            match = WHITESPACE.match(chunk, 0)
+                            pos = match.end() if match is not None else 0
                             try:
-                                match = WHITESPACE.match(chunk, 0)
-                                pos = match.end()
                                 data, end = decoder.raw_decode(chunk, pos)
+                                # We don't use 'end' here because chunk is complete line
                             except json.JSONDecodeError:
-                                logger.debug("Incomplete chunk; waiting for more data")
-                                buffer = chunk + ("\n" if buffer else "") + buffer
-                                continue
+                                logger.debug("Incomplete chunk; waiting for more data (mode=%s)", mode)
+                                # DO NOT duplicate buffer or re-insert chunk; just wait for more bytes.
+                                # The leftover partial remains in 'buffer'.
+                                break
 
                         if not isinstance(data, dict):
                             logger.debug("Parsed JSON not dict; normalizing text")
@@ -252,7 +290,7 @@ class Agent(BaseModel):
                                 final_parts = [resp]
                             else:
                                 try:
-                                    final_parts = [json.dumps(resp)]
+                                    final_parts = [json.dumps(resp, ensure_ascii=False)]
                                 except Exception:
                                     final_parts = [str(resp)]
                             meta = data.get("metadata", {}) or {}
@@ -260,9 +298,10 @@ class Agent(BaseModel):
                             self.input_tokens = usage.get("input_token_count", self.input_tokens or 0)
                             self.output_tokens = usage.get("output_token_count", self.output_tokens or 0)
                             logger.info("Full response frame received; returning assembled response from raw frames if possible.")
-                            # Use raw frames to assemble final result (preferred) 
+                            # Use raw frames to assemble final result (preferred)
                             joined_raw = "".join(frames).strip()
-                            joined_raw = joined_raw.replace(eos_marker, "")
+                            if joined_raw.endswith(eos_marker):
+                                joined_raw = joined_raw[: -len(eos_marker)]
                             trimmed = joined_raw.strip()
                             if trimmed.startswith("{") or trimmed.startswith("["):
                                 try:
@@ -280,11 +319,11 @@ class Agent(BaseModel):
                             self.output_tokens = usage.get("output_token_count", self.output_tokens or 0)
                             continue
 
-                    # attempt incremental raw_decode on leftover buffer
+                    # attempt incremental raw_decode on leftover buffer (only if no chunks were processed)
                     if buffer and not chunks:
                         try:
                             match = WHITESPACE.match(buffer, 0)
-                            pos = match.end()
+                            pos = match.end() if match is not None else 0
                             data, end = decoder.raw_decode(buffer, pos)
                             buffer = buffer[end:]
                             if not isinstance(data, dict):
@@ -306,7 +345,7 @@ class Agent(BaseModel):
                                     final_parts = [resp]
                                 else:
                                     try:
-                                        final_parts = [json.dumps(resp)]
+                                        final_parts = [json.dumps(resp, ensure_ascii=False)]
                                     except Exception:
                                         final_parts = [str(resp)]
                                 meta = data.get("metadata", {}) or {}
@@ -314,7 +353,9 @@ class Agent(BaseModel):
                                 self.input_tokens = usage.get("input_token_count", self.input_tokens or 0)
                                 self.output_tokens = usage.get("output_token_count", self.output_tokens or 0)
                                 # prefer raw frames for final assembly
-                                joined_raw = "".join(frames).strip().replace(eos_marker, "")
+                                joined_raw = "".join(frames).strip()
+                                if joined_raw.endswith(eos_marker):
+                                    joined_raw = joined_raw[: -len(eos_marker)]
                                 trimmed = joined_raw.strip()
                                 if trimmed.startswith("{") or trimmed.startswith("["):
                                     try:
@@ -335,7 +376,9 @@ class Agent(BaseModel):
 
                 # receive loop ended normally (server closed)
                 # Finalize using raw frames (preferred) or normalized parts as fallback
-                joined_raw = "".join(frames).strip().replace(eos_marker, "")
+                joined_raw = "".join(frames).strip()
+                if joined_raw.endswith(eos_marker):
+                    joined_raw = joined_raw[: -len(eos_marker)]
                 if joined_raw:
                     trimmed = joined_raw.strip()
                     if trimmed.startswith("{") or trimmed.startswith("["):
@@ -359,6 +402,13 @@ class Agent(BaseModel):
 
                 return None  # nothing to return here
 
+            finally:
+                if ws is not None:
+                    try:
+                        await ws.close()
+                    except Exception:
+                        logger.debug("Error while closing websocket (mode=%s)", mode, exc_info=True)
+
         # Build modes according to preference
         pref = (auth_preference or "auto").lower()
         if pref == "header":
@@ -369,16 +419,29 @@ class Agent(BaseModel):
             modes = ["header", "query"]
 
         last_exc: Optional[Exception] = None
+        timeout_exc: Optional[asyncio.TimeoutError] = None
+
         for mode in modes:
             try:
-                result = await _try_connect_and_receive(mode)
+                result = await asyncio.wait_for(_try_connect_and_receive(mode), timeout=timeout_seconds)
                 if result is not None:
                     self.most_recent_completion = result
                     self.most_recent_execution_time = datetime.now() - start_time
                     return result
                 # else: try next mode
             except InvalidStatusCode as e:
-                logger.warning("Handshake failed (mode=%s) status=%s headers=%s", mode, getattr(e, "status_code", None), getattr(e, "headers", None))
+                logger.warning(
+                    "Handshake failed (mode=%s) status=%s headers=%s",
+                    mode,
+                    getattr(e, "status_code", None),
+                    getattr(e, "headers", None),
+                )
+                last_exc = e
+                continue
+            except asyncio.TimeoutError as e:
+                # Distinguish overall attempt timeout from other transient errors
+                logger.warning("Attempt timed out after %s seconds (mode=%s)", timeout_seconds, mode)
+                timeout_exc = e
                 last_exc = e
                 continue
             except Exception as e:
@@ -387,6 +450,10 @@ class Agent(BaseModel):
                 continue
 
         # after trying modes
+        if timeout_exc:
+            # Prefer surfacing timeouts explicitly to callers
+            raise asyncio.TimeoutError(f"Completion attempt timed out after {timeout_seconds} seconds") from timeout_exc
+
         if last_exc:
             raise last_exc
 
@@ -394,9 +461,6 @@ class Agent(BaseModel):
         self.most_recent_completion = ""
         self.most_recent_execution_time = datetime.now() - start_time
         return ""
-
-
-
 
 
 # ## REST METHOD (synchronous and asynchronous) - DEPRECATED
