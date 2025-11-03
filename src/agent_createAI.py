@@ -46,6 +46,23 @@ class Agent(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+    def get_metadata(self) -> Dict[str, Any]:
+        return {
+            "session_id": self.session_id,
+            "api_token": self.api_token,
+            "system_prompt": self.system_prompt,
+            "user_prompt": self.user_prompt,
+            "model": self.model,
+            "completion": self.most_recent_completion,
+            "execution_time": (
+                str(self.most_recent_execution_time)
+                if self.most_recent_execution_time is not None
+                else None
+            ),
+            "input_tokens": self.input_tokens,
+            "output_tokens": self.output_tokens,
+        }
+
     async def completion_generation(
         self,
         *,
