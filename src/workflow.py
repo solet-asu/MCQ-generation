@@ -37,7 +37,7 @@ async def question_generation_workflow(
     ranking_metadata_table_name: str = "ranking_metadata",
     workflow_metadata_table_name: str = "workflow_metadata",
     database_file: str = "../database/mcq_metadata.db",
-    concurrency: int = 20, # Max concurrent tasks for question generation
+    concurrency: int = 10, # Max concurrent tasks for question generation
 ) -> list[dict[str, Any]]:
     """
     Generate MCQs from `text` given desired counts per question type.
@@ -131,6 +131,8 @@ async def question_generation_workflow(
     elapsed = time.perf_counter() - t0
 
     workflow_metadata = {
+        "session_id": session_id,
+        "api_token": api_token,
         "invocation_id": invocation_id,
         "output": json.dumps(reformatted_questions, ensure_ascii=False),
         "execution_time": f"{elapsed:.6f}",
