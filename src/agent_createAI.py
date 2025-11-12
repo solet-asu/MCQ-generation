@@ -14,6 +14,9 @@ import websockets
 from websockets.exceptions import InvalidStatusCode, ConnectionClosedError
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
+import ssl
+import certifi
+
 
 # Use selector event loop on Windows (avoids proactor cleanup crash)
 if sys.platform.startswith("win"):
@@ -194,6 +197,7 @@ class Agent(BaseModel):
 
             ws = None
             try:
+                ssl_context = ssl.create_default_context(cafile=certifi.where())
                 # create connection and ensure we close it in finally (important for cancellations)
                 ws = await websockets.connect(
                     url,
@@ -201,6 +205,8 @@ class Agent(BaseModel):
                     ping_interval=ping_interval,
                     subprotocols=subprotocols,
                     open_timeout=15,
+                    ssl=ssl_context, 
+
                 )
                 logger.debug("Handshake succeeded (mode=%s)", mode)
                 await ws.send(json.dumps(payload))
