@@ -13,3 +13,5 @@ pyyaml
 python-jose[cryptography]
 httpx
 python-multipart
+websockets==10.4
+websocket-client
