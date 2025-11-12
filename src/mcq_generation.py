@@ -96,8 +96,9 @@ async def generate_mcq(
     """Generate a multiple-choice question (MCQ) and store metadata."""
 
     create_table(mcq_metadata_table_name, database_file)
-
+    
     question_type = task.get("question_type", "").lower()
+    logger.info("generate_mcq start (invocation=%s, question_type=%s, attempt=%d)", invocation_id, question_type, attempt)
     # Safe JSON dump in case chunk has non-serializable objects
     try:
         chunk = json.dumps(task.get("chunk", []), default=str)
@@ -124,6 +125,9 @@ async def generate_mcq(
         "text": text,
         "context": task.get("context", ""),
     }))
+
+    logger.debug("Prompts loaded: system_prompt_len=%d user_prompt_len=%d",
+             len(system_prompt or ""), len(user_prompt or ""))
 
     # Add revision information if this isn't the first attempt
     if attempt > 1:
@@ -154,6 +158,8 @@ async def generate_mcq(
 
     for generation_try in range(1, max_generation_tries + 1):
         generated_text = await question_generation_agent.completion_generation()
+        logger.debug("Generated text snippet (invocation=%s): %s", invocation_id,
+             (generated_text[:1000] + '...') if isinstance(generated_text, str) and len(generated_text) > 1000 else generated_text)
         mcq_metadata = question_generation_agent.get_metadata()
         mcq_metadata.update({
             "question_type": question_type,
@@ -304,26 +310,32 @@ async def generate_mcq(
                 else:
                     logger.warning("Unknown evaluation status: %r", status)
 
+        logger.info("About to insert mcq metadata into DB (invocation=%s) keys=%s", invocation_id, list(mcq_metadata.keys()))
         insert_metadata(mcq_metadata, mcq_metadata_table_name, database_file)
 
     return mcq_metadata
 
 
 async def generate_candidate_mcqs_async(
-    session_id:str,
+    session_id: str,
     api_token: Optional[str],
     invocation_id: str,
     model: str,
     task: Dict,
-    mcq_table_name: str = "mcq_metadata",
-    evaluation_table_name: str = "evaluation_metadata",
+    mcq_metadata_table_name: str = "mcq_metadata",
+    evaluation_metadata_table_name: str = "evaluation_metadata",
     database_file: str = '../database/mcq_metadata.db',
     max_attempt: int = 3,
     attempt: int = 1
 ) -> Dict:
-    """
-    Asynchronously generate a single MCQ.
-    """
+    """Asynchronously generate a single MCQ."""
+    # DEBUG: log task summary at entry (avoid dumping huge text at INFO)
+    try:
+        logger.info("generate_candidate_mcqs_async start (invocation=%s, task_preview=%s...)",
+                    invocation_id, (task.get("question_type"), len(str(task.get("text","")))))
+    except Exception:
+        logger.debug("generate_candidate_mcqs_async: failed to summarize task", exc_info=True)
+
     try:
         mcq_metadata = await generate_mcq(
             session_id=session_id,
@@ -331,18 +343,19 @@ async def generate_candidate_mcqs_async(
             invocation_id=invocation_id, 
             model=model, 
             task=task,
-            mcq_table_name=mcq_table_name, 
-            evaluation_table_name=evaluation_table_name, 
+            mcq_metadata_table_name=mcq_metadata_table_name,
+            evaluation_metadata_table_name=evaluation_metadata_table_name,
             database_file=database_file,
-            max_attempt= max_attempt, 
-            attempt= attempt
+            max_attempt=max_attempt, 
+            attempt=attempt
         )
+        # DEBUG: log result shape
+        logger.info("generate_candidate_mcqs_async finished (invocation=%s) result_keys=%s",
+                    invocation_id, list(mcq_metadata.keys()) if isinstance(mcq_metadata, dict) else type(mcq_metadata))
         return mcq_metadata
     except Exception as e:
-        logger.error(f"Error generating MCQ: {e}")
-        # Stable shape on error
+        logger.exception("Error generating MCQ in generate_candidate_mcqs_async (invocation=%s): %s", invocation_id, e)
         return {"mcq": None, "mcq_answer": None, "error": str(e)}
-
 
 async def generate_mcq_quality_first(
     session_id:str,
@@ -379,23 +392,67 @@ async def generate_mcq_quality_first(
     # Create tables for storing metadata
     create_table(ranking_metadata_table_name, database_file)
 
-    # Generate multiple candidate questions concurrently
-    tasks = [
-        generate_candidate_mcqs_async(
+        # --- debug: indicate function entry for this task ---
+    logger.info(
+        "generate_mcq_quality_first start (invocation=%s, qtype=%s, candidate_num=%d, text_len=%d)",
+        invocation_id,
+        task.get("question_type"),
+        candidate_num,
+        len(str(task.get("text", ""))),
+    )
+
+    # Build candidate tasks (do not run them yet)
+    candidate_tasks = []
+    for idx in range(candidate_num):
+        t = generate_candidate_mcqs_async(
             session_id=session_id,
             api_token=api_token,
-            invocation_id=invocation_id, 
-            model=model, 
+            invocation_id=invocation_id,
+            model=model,
             task=task,
-            mcq_metadata_table_name=mcq_metadata_table_name, 
+            mcq_metadata_table_name=mcq_metadata_table_name,
             evaluation_metadata_table_name=evaluation_metadata_table_name,
-            database_file=database_file, 
-            max_attempt= max_attempt, 
-            attempt= attempt
+            database_file=database_file,
+            max_attempt=max_attempt,
+            attempt=attempt,
         )
-        for _ in range(candidate_num)
-    ]
-    candidate_questions_metadata = await asyncio.gather(*tasks)
+        candidate_tasks.append(t)
+        logger.info("generate_mcq_quality_first (invocation=%s) scheduled candidate task index=%d", invocation_id, idx)
+
+    # Now run them and capture exceptions
+    logger.info("generate_mcq_quality_first (invocation=%s) awaiting %d candidate tasks...", invocation_id, len(candidate_tasks))
+    candidate_questions_metadata = await asyncio.gather(*candidate_tasks, return_exceptions=True)
+
+    # Inspect and log each returned item (Exception or value)
+    for i, item in enumerate(candidate_questions_metadata):
+        if isinstance(item, Exception):
+            logger.warning(
+                "generate_mcq_quality_first (invocation=%s) candidate[%d] raised: %s: %s",
+                invocation_id,
+                i,
+                item.__class__.__name__,
+                str(item),
+            )
+            # full traceback at DEBUG level
+            logger.debug("generate_mcq_quality_first (invocation=%s) candidate[%d] traceback:", invocation_id, i, exc_info=item)
+        else:
+            try:
+                preview = json.dumps(item, ensure_ascii=False)
+            except Exception:
+                preview = repr(item)
+            logger.info(
+                "generate_mcq_quality_first (invocation=%s) candidate[%d] returned: %s",
+                invocation_id,
+                i,
+                preview[:1500],
+            )
+
+    logger.info(
+        "generate_mcq_quality_first (invocation=%s): finished gather; items=%d",
+        invocation_id,
+        len(candidate_questions_metadata),
+    )
+
 
     # Filter out any None or invalid results, and keep only those with both question and answer
     candidate_questions: List[Dict[str, Any]] = []
@@ -509,6 +566,7 @@ async def generate_mcq_quality_first(
     return ranking_metadata
 
 
+
 async def extract_answer_with_agent(session_id: str, api_token: Optional[str], generated_text: str, model: str = "gpt-3.5-turbo") -> str:
     """Extract the answer from the generated text using an agent."""
     try:
@@ -558,7 +616,7 @@ async def generate_all_mcqs(
     evaluation_metadata_table_name: str = "evaluation_metadata",
     database_file: str = "../database/mcq_metadata.db",
     max_attempt: int = 3,
-    concurrency: int = 30,  # NEW
+    concurrency: int = 4,  # NEW
 ) -> List[Dict[str, Any]]:
     sem = asyncio.Semaphore(max(1, concurrency))
 
@@ -596,9 +654,16 @@ async def generate_all_mcqs_quality_first(
     max_attempt: int = 3,
     attempt: int = 1,
     candidate_num: int = 5,
-    concurrency: int = 30,  # NEW
+    concurrency: int = 4,  # NEW
 ) -> List[Dict[str, Any]]:
     sem = asyncio.Semaphore(max(1, concurrency))
+    logger.info(
+    "generate_all_mcqs_quality_first start (invocation=%s, tasks=%d, candidate_num=%d, concurrency=%d)",
+    invocation_id,
+    len(task_list),
+    candidate_num,
+    concurrency,
+)
 
     async def _run(task: Mapping[str, Any]) -> Dict[str, Any]:
         async with sem:

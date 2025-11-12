@@ -10,8 +10,8 @@ from models.req_models import MCQRequest
 import logging, os
 
 # Import authentication utilities
-from utils.auth_utils import decode_token, TOKEN_COOKIE_NAME
-from utils.auth_middleware import AuthMiddleware
+from demo.utils.auth_utils import decode_token, TOKEN_COOKIE_NAME
+from demo.utils.auth_middleware import AuthMiddleware
 
 # Import the generate_mcq function
 from src.workflow import question_generation_workflow
@@ -35,6 +35,9 @@ app.add_middleware(
 # Add authentication middleware
 app.add_middleware(AuthMiddleware)
 
+# Mount the static files directory
+app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/pdf", StaticFiles(directory="pdf"), name="pdf")
 
 
 @app.get("/")

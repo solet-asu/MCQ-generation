@@ -47,7 +47,9 @@ system_prompt: |
     Step4: Output your response following the JSON format as specified below. 
 
     {
-      "summary": "Summarized text here",
+      "summary": {"chunk1": "Summary of chunk1", "chunk2": "Summary of chunk2"
+        // Include summaries for all chunks in the text
+      },
       "reasoning_for_selection": "Your reasoning for the selection here",
       "selection": {
         "facts": {
@@ -69,6 +71,7 @@ system_prompt: |
     - If no facts or inferences are requested, the values for the "facts" or "inferences" field should be an empty object {}.
     - The "chunk" field indicates the source of the facts or inferences in the text. The value is a list of chunk labels obtained from the html tags, such as “chunk1”, “chunk2”. Sometimes an inference may be from multiple chunks, such as [“chunk1”, “chunck2”].
     - Return ONLY a JSON object matching the JSON format specified above. No prose, no explanations, no code fences.
+    - Do not include raw (unescaped) newlines / control characters in the JSON output. Escape them properly.
 
 
   Step5: Self-critique your response
