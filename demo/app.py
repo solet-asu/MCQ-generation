@@ -1,12 +1,13 @@
 # app.py
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from models.req_models import MCQRequest
+from src.workflow import question_generation_workflow
 from typing import List, Dict
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from models.req_models import MCQRequest
-import logging
+import logging, os
 
 # Import authentication utilities
 from demo.utils.auth_utils import decode_token, TOKEN_COOKIE_NAME
@@ -74,7 +75,7 @@ async def read_root(request: Request, projectWebToken: str = None):
     
     # Normal access - user already has valid token (checked by middleware)
     # Redirect to the main application page
-    return RedirectResponse(url="/static/index.html")
+    return FileResponse("static/index.html")
 
 
 @app.get("/auth/user")
@@ -145,3 +146,10 @@ async def generate_mcq_endpoint(request: MCQRequest, req: Request) -> JSONRespon
 async def health_check():
     """Health check endpoint (public, no auth required)"""
     return {"status": "healthy"}
+
+
+
+
+#Keep it at the end of the file
+#Mount the static files directory
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
