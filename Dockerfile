@@ -1,7 +1,7 @@
 # --------------------------
 # Stage 1: Build frontend
 # --------------------------
-FROM node:18 AS frontend-builder
+FROM public.ecr.aws/docker/library/node:18 AS frontend-builder
 
 # Set working directory for frontend build
 WORKDIR /app/demo/frontend
@@ -15,7 +15,7 @@ RUN npm ci && npm run build
 # --------------------------
 # Stage 2: Final backend image
 # --------------------------
-FROM python:3.11-slim
+FROM public.ecr.aws/docker/library/python:3.11-slim
 
 # Set working directory
 WORKDIR /app
