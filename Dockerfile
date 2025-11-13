@@ -37,4 +37,5 @@ COPY --from=frontend-builder /app/demo/frontend/out /app/static
 EXPOSE 8080
 
 # Start the app
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "4"]
+
