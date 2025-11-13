@@ -12,8 +12,8 @@ from dotenv import load_dotenv
 
 
 # Import authentication utilities
-from demo.utils.auth_utils import decode_token, TOKEN_COOKIE_NAME
-from demo.utils.auth_middleware import AuthMiddleware
+from utils.auth_utils import decode_token, TOKEN_COOKIE_NAME
+from utils.auth_middleware import AuthMiddleware
 
 # Import the generate_mcq function
 from src.workflow import question_generation_workflow
