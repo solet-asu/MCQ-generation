@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+spacy
+openai==1.68.2
+pandas
+numpy
+tiktoken
+python-dotenv
+python-Levenshtein
+sentence-transformers>=2.6.1
+torch>=2.2
+pyyaml
+python-jose[cryptography]
+httpx
+python-multipart
+websockets==10.4
+websocket-client
