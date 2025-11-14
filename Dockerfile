@@ -37,6 +37,6 @@ COPY --from=frontend-builder /app/demo/frontend/out /app/static
 EXPOSE 8080
 
 # Start the app
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app:app", "--workers", "2", "--threads", "2", "--bind", "0.0.0.0:8080", "--timeout", "120"]
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app:app", "--workers", "2", "--threads", "1", "--bind", "0.0.0.0:8080", "--timeout", "200"]
 
 
