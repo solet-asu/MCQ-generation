@@ -188,3 +188,5 @@ notebook/MCQ_Analysis.ipynb
 
 .vscode/launch.json
 demo/static/*
+
+locustfile.py
