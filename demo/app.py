@@ -1,7 +1,6 @@
-# app.py
+import uuid
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 from typing import List, Dict
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -117,7 +116,7 @@ async def generate_mcq_endpoint(request: MCQRequest, req: Request) -> JSONRespon
         JSONResponse: A JSON response containing the generated MCQs
     """
     try:
-        session_id = req.headers.get('x-session-id', 'unknown')
+        session_id = str(uuid.uuid4())
         token = req.state.token
         logger.debug(f"Generating MCQs for authenticated user")
         
