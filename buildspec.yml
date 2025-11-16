@@ -7,7 +7,7 @@ phases:
       - aws --version
       - ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
       - REGION=us-west-2
-      - REPOSITORY_NAME=mcq_generator
+      - REPOSITORY_NAME=mcq_generator_ecs
       - aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com
 
   build:
@@ -23,4 +23,4 @@ phases:
       - docker push ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/$REPOSITORY_NAME:latest
 
 artifacts:
-  files: '**/*'
+  files: "**/*"
