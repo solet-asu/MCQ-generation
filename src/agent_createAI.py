@@ -554,7 +554,7 @@ class Agent(BaseModel):
     async def completion_generation(
         self,
         *,
-        timeout_seconds: float = 100.0,
+        timeout_seconds: float = 200.0,
     ) -> str:
         if not self.api_token:
             logger.info("api_token is not provided by the user. Defaulting to lcoal environment variable.")
