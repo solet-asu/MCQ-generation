@@ -17,6 +17,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
         
+        # Skip authentication for health check endpoint
+        if path == "/health":
+            return await call_next(request)
+        
         # Special handling for root path with projectWebToken parameter (SSO callback)
         if path == "/" and "projectWebToken" in request.query_params:
             # Allow this request through - the endpoint will handle token validation and cookie setting
