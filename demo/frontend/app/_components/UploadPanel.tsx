@@ -38,7 +38,24 @@ export default function UploadPanel({
   const [isUploadConfirmOpen, setIsUploadConfirmOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
 
-  const UI_TRUNCATE = 40000;
+  const MAX_WORDS = 10000; // word limit for processing and UI display
+
+  // For informing the user we truncated their text
+  const [isTruncated, setIsTruncated] = useState(false);
+  const [truncatedOriginalWordCount, setTruncatedOriginalWordCount] = useState<
+    number | null
+  >(null);
+
+  // Helper: truncate to MAX_WORDS (word-aware)
+  function truncateToWordLimit(input: string) {
+    const words = input.split(/\s+/).filter(Boolean);
+    if (words.length <= MAX_WORDS) {
+      return { truncated: false, text: input, originalCount: words.length };
+    }
+    // join with single spaces to keep consistent spacing
+    const sliced = words.slice(0, MAX_WORDS).join(" ");
+    return { truncated: true, text: sliced, originalCount: words.length };
+  }
 
   const handleFileChosen = useCallback(
     async (file: File | null) => {
@@ -48,11 +65,23 @@ export default function UploadPanel({
       setIsExtracting(true);
       try {
         const extracted = await extractTextClient(file);
-        setFullText(extracted); // store the full text for analysis
-        setText(extracted.slice(0, UI_TRUNCATE)); // UI-friendly truncated copy
+
+        // truncate by words if needed (this truncated text is canonical)
+        const {
+          truncated,
+          text: truncatedText,
+          originalCount,
+        } = truncateToWordLimit(extracted);
+
+        // store and display the truncated 10k-word text
+        setFullText(truncatedText);
+        setText(truncatedText); // show the full truncated 10k words in textarea
         setUploadedFile(file);
         setPendingFile(null);
         setIsUploadConfirmOpen(false);
+
+        setIsTruncated(truncated);
+        setTruncatedOriginalWordCount(truncated ? originalCount : null);
       } catch (e: any) {
         console.error("Failed to extract text:", e);
         setExtractError(e?.message || "Could not read file");
@@ -68,7 +97,7 @@ export default function UploadPanel({
       const file = ev.target.files?.[0] ?? null;
       if (!file) return;
 
-      // if textarea has content -> ask for confirmation
+      // if textarea has content -> ask for confirmation before replacing
       if (text.trim().length > 0) {
         setPendingFile(file);
         setIsUploadConfirmOpen(true);
@@ -133,8 +162,17 @@ export default function UploadPanel({
           value={text}
           onChange={(e) => {
             const v = e.target.value;
-            setText(v);
-            setFullText(v);
+            // apply the same 10k-word truncation for manual paste/typing
+            const {
+              truncated,
+              text: truncatedText,
+              originalCount,
+            } = truncateToWordLimit(v);
+
+            setFullText(truncatedText); // canonical processed text
+            setText(truncatedText); // UI shows the truncated-to-10k text
+            setIsTruncated(truncated);
+            setTruncatedOriginalWordCount(truncated ? originalCount : null);
           }}
           className="min-h-[350px] resize-none"
         />
@@ -143,21 +181,15 @@ export default function UploadPanel({
           <span>{text.length} characters</span>
           <span>{text.split(/\s+/).filter(Boolean).length} words</span>
         </div>
-        {fullText.length > text.length && (
-          <div className="mt-1 flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground">
-              Showing first {UI_TRUNCATE.toLocaleString()} chars of{" "}
-              {fullText.length.toLocaleString()}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setText(fullText); // replace textarea with full text (may be heavy)
-              }}
-              className="underline"
-            >
-              Show full
-            </button>
+
+        {/* Prominent warning if truncation occurred */}
+        {isTruncated && truncatedOriginalWordCount !== null && (
+          <div className="mt-1 rounded-md border border-yellow-300 bg-yellow-50 text-yellow-900 p-3 text-sm">
+            <strong>Note:</strong> Your text exceeded the{" "}
+            {MAX_WORDS.toLocaleString()}-word limit and has been truncated to
+            the first {MAX_WORDS.toLocaleString()} words. The original contained{" "}
+            {truncatedOriginalWordCount.toLocaleString()} words. The generator
+            will use only the truncated text.
           </div>
         )}
       </div>
@@ -221,6 +253,7 @@ export default function UploadPanel({
           </div>
         </DialogContent>
       </Dialog>
+
       <div className="bg-muted/30 rounded-lg p-4 space-y-2">
         <h4 className="text-sm font-medium text-asu-maroon">
           Tips for Better Questions:
