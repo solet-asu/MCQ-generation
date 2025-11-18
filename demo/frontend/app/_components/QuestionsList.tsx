@@ -228,6 +228,14 @@ export default function QuestionsList({ questions, totalQuestions }: Props) {
     }
   };
 
+  // helper: detect placeholder options like "Option A" / "Option B" etc.
+  const isPlaceholderOptions = (opts: string[]) => {
+    if (!opts || opts.length === 0) return true;
+    return opts.every(
+      (o) => /^Option\s+[A-D]$/i.test(o.trim()) || o.trim() === ""
+    );
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -446,6 +454,11 @@ export default function QuestionsList({ questions, totalQuestions }: Props) {
             {questions.map((q, index) => {
               const selected = selectedAnswers[q.id];
               const revealed = !!revealedQuestions[q.id];
+
+              const questionMissing =
+                !q.question || q.question.trim().length === 0;
+              const optionsMissing = isPlaceholderOptions(q.options);
+
               return (
                 <div key={q.id} className="border border-border rounded-lg p-6">
                   <div className="flex items-center justify-between mb-4">
@@ -494,63 +507,90 @@ export default function QuestionsList({ questions, totalQuestions }: Props) {
                   </div>
 
                   <h3 className="font-medium mb-4 text-lg leading-tight">
-                    {q.question}
+                    {q.question || (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </h3>
 
-                  <div className="space-y-3">
-                    {q.options.map((option, i) => {
-                      let optionClasses =
-                        "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors bg-white ";
-                      let circleClasses =
-                        "w-6 h-6 rounded-full border-2 flex items-center justify-center text-sm font-medium flex-shrink-0 ";
-                      let textClasses = "leading-relaxed text-black ";
+                  {/* -- If question text is missing, show a clear failure message -- */}
+                  {questionMissing ? (
+                    <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                      <strong>Could not generate question.</strong>
+                      <div className="mt-2 text-muted-foreground">
+                        The generator failed to produce a question for this
+                        item.
+                      </div>
+                    </div>
+                  ) : optionsMissing ? (
+                    /* -- If options are missing or placeholders, show a friendly message instead of options UI -- */
+                    <div className="rounded-md border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900">
+                      <strong>
+                        Could not generate options for this question.
+                      </strong>
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        The generator did not return usable answer choices for
+                        this question.
+                      </div>
+                    </div>
+                  ) : (
+                    /* -- Normal rendering of options when present -- */
+                    <div className="space-y-3">
+                      {q.options.map((option, i) => {
+                        let optionClasses =
+                          "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors bg-white ";
+                        let circleClasses =
+                          "w-6 h-6 rounded-full border-2 flex items-center justify-center text-sm font-medium flex-shrink-0 ";
+                        let textClasses = "leading-relaxed text-black ";
 
-                      if (revealed) {
-                        if (i === q.correct) {
-                          optionClasses += "border-[#78BE20]";
-                          circleClasses +=
-                            "bg-[#78BE20] text-white border-[#78BE20]";
-                          textClasses += "font-medium";
-                        } else if (selected === i) {
-                          optionClasses += "border-red-500";
-                          circleClasses +=
-                            "bg-red-500 text-white border-red-500";
-                        } else {
-                          optionClasses += "border-border hover:bg-muted/50";
-                          circleClasses += "border-border bg-white text-black";
-                        }
-                      } else {
-                        if (selected === i) {
-                          optionClasses += "border-gray-400";
-                          circleClasses +=
-                            "bg-gray-600 text-white border-gray-600";
-                        } else {
-                          optionClasses += "border-border hover:bg-muted/50";
-                          circleClasses += "border-border bg-white text-black";
-                        }
-                      }
-
-                      return (
-                        <div
-                          key={i}
-                          className={optionClasses + " cursor-pointer"}
-                          onClick={() =>
-                            setSelectedAnswers((prev) => ({
-                              ...prev,
-                              [q.id]: i,
-                            }))
+                        if (revealed) {
+                          if (i === q.correct) {
+                            optionClasses += "border-[#78BE20]";
+                            circleClasses +=
+                              "bg-[#78BE20] text-white border-[#78BE20]";
+                            textClasses += "font-medium";
+                          } else if (selected === i) {
+                            optionClasses += "border-red-500";
+                            circleClasses +=
+                              "bg-red-500 text-white border-red-500";
+                          } else {
+                            optionClasses += "border-border hover:bg-muted/50";
+                            circleClasses +=
+                              "border-border bg-white text-black";
                           }
-                        >
-                          <div className={circleClasses}>
-                            {String.fromCharCode(65 + i)}
-                          </div>
-                          <span className={textClasses}>{option}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        } else {
+                          if (selected === i) {
+                            optionClasses += "border-gray-400";
+                            circleClasses +=
+                              "bg-gray-600 text-white border-gray-600";
+                          } else {
+                            optionClasses += "border-border hover:bg-muted/50";
+                            circleClasses +=
+                              "border-border bg-white text-black";
+                          }
+                        }
 
-                  {revealed && (
+                        return (
+                          <div
+                            key={i}
+                            className={optionClasses + " cursor-pointer"}
+                            onClick={() =>
+                              setSelectedAnswers((prev) => ({
+                                ...prev,
+                                [q.id]: i,
+                              }))
+                            }
+                          >
+                            <div className={circleClasses}>
+                              {String.fromCharCode(65 + i)}
+                            </div>
+                            <span className={textClasses}>{option}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {revealed && !questionMissing && !optionsMissing && (
                     <div className="mt-6 pt-4 border-t border-border">
                       <div className="bg-muted/50 rounded-lg p-4">
                         <p className="text-sm">
