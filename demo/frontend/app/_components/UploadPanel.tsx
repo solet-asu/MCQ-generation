@@ -176,10 +176,13 @@ export default function UploadPanel({
           }}
           className="min-h-[350px] resize-none"
         />
+        <p className="text-xs text-gray-600">
+          Text longer than 10,000 words will be automatically truncated.
+        </p>
 
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>{text.length} characters</span>
-          <span>{text.split(/\s+/).filter(Boolean).length} words</span>
+          <span>~{text.split(/\s+/).filter(Boolean).length} words</span>
         </div>
 
         {/* Prominent warning if truncation occurred */}
