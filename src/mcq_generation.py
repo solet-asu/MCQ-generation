@@ -36,9 +36,10 @@ def extract_output(input_str: str, item: str = "QUESTION") -> Optional[str]:
 
 def _has_all_four_options(mcq_text: str) -> bool:
     """
-    Validate that MCQ contains options A), B), C), and D) at line starts.
+    Validate that MCQ contains all four labeled options (A–D),
+    tolerating extra whitespace and minor punctuation variants.
     """
-    letters = set(re.findall(r'^([A-D])\)\s+', mcq_text, flags=re.MULTILINE | re.IGNORECASE))
+    letters = set(re.findall(r'^\s*([A-Da-d])[\)\.\:]\s+', mcq_text, flags=re.MULTILINE))
     return {'A', 'B', 'C', 'D'}.issubset({l.upper() for l in letters})
 
 
