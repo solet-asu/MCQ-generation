@@ -200,8 +200,16 @@ export default function HomeClient() {
   };
 
   const parseQuestionItem = (item: any, index: number): Question => {
-    const mcqText = item.mcq as string;
-    const correctAnswer = item.mcq_answer as string;
+    let mcqText = (item.mcq ?? "").trim();
+    //normalize common escape sequences and clean up
+    mcqText = mcqText
+      .replace(/\\r/g, "") // literal "\r"
+      .replace(/\\n/g, "\n") // literal "\n" -> newline
+      .replace(/\\t/g, "\t") // literal "\t" -> tab
+      .replace(/\u00A0/g, " ") // NBSP -> space
+      .replace(/\u200B/g, "") // zero-width space -> remove
+      .replace(/\r/g, ""); // remove any stray CRs
+    const correctAnswer = (item.mcq_answer ?? "").trim();
     const apiExplanation =
       typeof item.explanation === "string" ? item.explanation : "";
     const apiType = String(item.question_type ?? "").toLowerCase(); // "fact" | "inference" | "main_idea"
@@ -210,57 +218,102 @@ export default function HomeClient() {
     let question = "";
     let options: string[] = [];
 
-    // Method 1: Split by A) B) C) D)
-    const parts = mcqText.split(/\s*[A-D]\)\s*/);
-    if (parts.length >= 2) {
-      question = parts[0].trim();
-      for (let i = 1; i < parts.length && options.length < 4; i++) {
-        const option = parts[i].trim();
-        if (option) options.push(option);
+    // Only treat A)/B)/C)/D) as option markers when they are standalone tokens.
+    // Use \b before letter so "(KD)" won't match because 'D' there is not a word boundary (it's part of 'KD').
+    // Step 1: find the first valid option marker (A) ... D) that is a token boundary)
+    const firstOptionMatch = mcqText.match(/\b([A-D])\)\s*/);
+    if (firstOptionMatch) {
+      const markerIndex = mcqText.search(/\b[A-D]\)\s*/);
+      if (markerIndex !== -1) {
+        // question is everything before that marker
+        question = mcqText.slice(0, markerIndex).trim();
+
+        // Now extract options robustly: match A) ... up to next valid marker or end
+        const optionRe = /\b([A-D])\)\s*([\s\S]*?)(?=(?:\b[A-D]\)\s*)|$)/g;
+        const matches = [];
+        let m;
+        while ((m = optionRe.exec(mcqText)) !== null) {
+          // m[1] is letter, m[2] is option text
+          const optText = m[2].trim();
+          if (optText.length > 0) {
+            // ensure order A-D; avoid duplicates
+            matches.push({ letter: m[1], text: optText });
+          }
+          // break early if we have 4 options
+          if (matches.length >= 4) break;
+        }
+
+        // sort by letter order and fill options array
+        matches.sort((a, b) => a.letter.charCodeAt(0) - b.letter.charCodeAt(0));
+        options = matches.map((x) => x.text).slice(0, 4);
       }
     }
 
-    // Method 2: Regex extraction if needed
+    // Fallback: simple split by A)/B)/C)/D) if nothing found yet
     if (options.length === 0) {
-      const questionMatch = mcqText.match(/^(.*?)(?=\s*[A-D]\))/s);
+      // only split if marker is a token boundary
+      const parts = mcqText.split(/\b[A-D]\)\s*/);
+      if (parts.length >= 2) {
+        question = parts[0].trim();
+        for (let i = 1; i < parts.length && options.length < 4; i++) {
+          const option = parts[i].trim();
+          if (option) options.push(option);
+        }
+      }
+    }
+
+    // Another fallback: try regex extraction similar to original but ensure \b before [A-D]
+    if (options.length === 0) {
+      const questionMatch = mcqText.match(/^(.*?)(?=\b[A-D]\))/s);
       if (questionMatch) question = questionMatch[1].trim();
 
       const optionMatches = mcqText.match(
-        /[A-D]\)\s*([^A-D]*?)(?=\s*[A-D]\)|$)/gs
+        /\b[A-D]\)\s*([^A-D]*?)(?=(?:\b[A-D]\)|$))/gs
       );
       if (optionMatches) {
         options = optionMatches
-          .map((m) => m.replace(/^[A-D]\)\s*/, "").trim())
-          .filter((o) => o.length > 0);
+          .map((m) => m.replace(/^\s*[A-D]\)\s*/, "").trim())
+          .filter((o) => o.length > 0)
+          .slice(0, 4);
       }
     }
 
+    // Final fallback: if still nothing, put the whole mcq text as question and placeholder options
+    if (!question && options.length === 0) {
+      question = mcqText;
+      options = ["Option A", "Option B", "Option C", "Option D"];
+    } else if (!question) {
+      // ensure question has something
+      question = mcqText;
+    }
+
+    // sanitize question prefix (remove Q1: etc.)
     if (question)
       question = question.replace(/^(?:Q\d+:|Question\s+\d+:)\s*/i, "").trim();
 
-    if (!question || options.length === 0) {
-      question = mcqText;
-      options = ["Option A", "Option B", "Option C", "Option D"];
-    }
-
+    // --- determine correctIndex robustly (same logic but a bit more defensive)
     let correctIndex = -1;
     if (correctAnswer) {
       const answerText = correctAnswer.trim();
 
-      const letter = answerText.match(/^([A-D])\b/);
-      if (letter) correctIndex = letter[1].charCodeAt(0) - 65;
+      // try capturing a leading letter (A/B/C/D) anywhere but prefer standalone token
+      const letterToken = answerText.match(/\b([A-D])\b/);
+      if (letterToken) correctIndex = letterToken[1].charCodeAt(0) - 65;
 
+      // try capturing form like "A)" after a possible prefix (e.g. "Q1: A) ...")
       if (correctIndex === -1) {
-        const paren = answerText.match(/^([A-D])\)/);
+        const paren = answerText.match(/\b([A-D])\)\b/);
         if (paren) correctIndex = paren[1].charCodeAt(0) - 65;
       }
 
+      // try "Answer: A" style
       if (correctIndex === -1) {
         const answerPrefix = answerText.match(/Answer:\s*([A-D])/i);
         if (answerPrefix)
           correctIndex = answerPrefix[1].toUpperCase().charCodeAt(0) - 65;
       }
 
+      // final fuzzy match against option strings
       if (correctIndex === -1) {
         const normalized = answerText.toLowerCase().trim();
         for (let i = 0; i < options.length; i++) {

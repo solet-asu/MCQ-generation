@@ -10,6 +10,7 @@ from src.evaluator import generate_evaluation
 from src.option_shortener_workflow import check_and_shorten_long_option
 import asyncio
 import json
+import html
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -20,18 +21,116 @@ QUESTION_TYPE_PROMPT_MAP = {
     "main_idea": "main_idea_prompts.yaml",
 }
 
-
 def extract_output(input_str: str, item: str = "QUESTION") -> Optional[str]:
-    """Extract content between <ITEM>...</ITEM> tags robustly."""
+    """Extract content between <ITEM>...</ITEM> tags robustly.
+    If options A-D are not inside the tag, try to find option lines after the closing tag
+    and append them. If an <ANSWER> tag contains a labeled option (e.g., "D) ...") or a
+    label ("D"), include it if that label is missing from the found options.
+    Avoid duplicating options when the same label already exists.
+    """
+    # normalize and unescape early so regexes and line anchors behave
+    working = html.unescape(input_str or "")
+    # convert literal escape sequences into real characters
+    working = working.replace("\\n", "\n").replace("\\t", "\t").replace("\\r", "")
+    # remove some invisible characters that commonly break regexes
+    working = working.replace("\u200b", "").replace("\u00A0", " ")
+
+    # find the requested tag
     pattern = re.compile(rf"<{item}\b[^>]*>(.*?)</{item}\s*>", re.DOTALL | re.IGNORECASE)
-    match = pattern.search(input_str)
-    if match:
-        target_str = match.group(1).strip()
-        target_str = target_str.replace("\\n", "\n").replace("\\t", "\t")
-        return target_str
-    else:
+    match = pattern.search(working)
+    if not match:
         logger.error(f"No desired tags found in '{input_str}'.")
         return None
+
+    target_str = match.group(1).strip()
+
+    # if options are already inside the question, return it directly
+    if re.search(r'^\s*[A-Da-d][\)\.\:]\s+', target_str, flags=re.MULTILINE):
+        return target_str
+
+    # convenience: text after the closing tag
+    rest = working[match.end():]
+
+    # 1) find all option lines in 'rest': lines starting with A)-D)
+    found_lines = re.findall(r'^\s*([A-Da-d])[\)\.\:]\s*(.*)', rest, flags=re.MULTILINE)
+
+    # build an ordered map of options we found (preserve first-seen ordering by label A-D)
+    opts_map = {}
+    for lbl, txt in found_lines:
+        label = lbl.upper()
+        # collapse wrapped lines in this simple pass: join following indented lines (best-effort)
+        # (we'll keep only the captured line text here; more advanced reflow can be added if needed)
+        opts_map.setdefault(label, txt.strip())
+
+    # 2) inspect <ANSWER> tag if present
+    answer_tag = re.search(r'<ANSWER\b[^>]*>(.*?)</ANSWER\s*>', working, flags=re.IGNORECASE | re.DOTALL)
+    answer_block = None
+    answer_label = None
+    answer_label_text = None
+    if answer_tag:
+        answer_block = answer_tag.group(1).strip()
+        # normalize any escaped sequences inside answer block too
+        answer_block = answer_block.replace("\\n", "\n").replace("\\t", "\t").strip()
+        # try to capture labeled form "D) text" or "D: text"
+        m_lbl = re.match(r'^\s*([A-Da-d])[\)\.\:]\s*(.*)', answer_block, flags=re.DOTALL)
+        if m_lbl:
+            answer_label = m_lbl.group(1).upper()
+            answer_label_text = m_lbl.group(2).strip() or None
+        else:
+            # maybe it's just "D" or "Answer: D"
+            m2 = re.search(r'\b([A-Da-d])\b', answer_block)
+            if m2:
+                answer_label = m2.group(1).upper()
+                # no label_text in this case (we'll just know the label exists)
+
+    # 3) If we found options in rest, reconstruct an options block in label order
+    if opts_map:
+        # ensure we iterate A-D in canonical order but only include labels we actually have
+        ordered_lines = []
+        for lbl in ("A", "B", "C", "D"):
+            if lbl in opts_map:
+                # collapse internal wrapped lines (if any) -> single line
+                txt = re.sub(r'\n\s+', ' ', opts_map[lbl]).strip()
+                ordered_lines.append(f"{lbl}) {txt}")
+        # if answer label exists and is missing from opts_map, append it (but avoid duplicates)
+        if answer_label and answer_label not in opts_map:
+            # if we have text for the answer label, append that; otherwise append label alone
+            if answer_label_text:
+                ordered_lines.append(f"{answer_label}) {answer_label_text}")
+            else:
+                ordered_lines.append(f"{answer_label})")
+        opts_block = "\n".join(ordered_lines)
+        combined = target_str + "\n\n" + opts_block
+        return combined
+
+    # 4) If no options were found in rest, but an ANSWER tag contains a labeled option, include it
+    if answer_label:
+        if answer_label_text:
+            combined = target_str + "\n\n" + f"{answer_label}) {answer_label_text}"
+        else:
+            # No textual answer body in <ANSWER>, but we know the label exists.
+            # Attempt to see if any A/B/C lines exist in rest (maybe LLM emitted A-C only)
+            partial_lines = re.findall(r'^\s*([A-Ca-c])[\)\.\:]\s*(.*)', rest, flags=re.MULTILINE)
+            if partial_lines:
+                # build block from partials then ensure answer_label is included
+                parts = []
+                seen = set()
+                for lbl, txt in partial_lines:
+                    L = lbl.upper()
+                    if L not in seen:
+                        parts.append(f"{L}) {txt.strip()}")
+                        seen.add(L)
+                if answer_label not in seen:
+                    parts.append(f"{answer_label})")
+                opts_block = "\n".join(parts)
+                combined = target_str + "\n\n" + opts_block
+            else:
+                # nothing else; just include the answer label alone
+                combined = target_str + "\n\n" + f"{answer_label})"
+        return combined
+
+    # 5) nothing found: return the question-only content
+    return target_str
 
 
 def _has_all_four_options(mcq_text: str) -> bool:
