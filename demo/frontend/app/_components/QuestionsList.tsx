@@ -484,7 +484,7 @@ export default function QuestionsList({ questions, totalQuestions }: Props) {
                           <Eye className="h-4 w-4" />
                         )}
                       </Button>
-                      <Button
+                      {/*                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => {}}
@@ -502,7 +502,7 @@ export default function QuestionsList({ questions, totalQuestions }: Props) {
                         title="Regenerate this question"
                       >
                         <RotateCcw className="h-4 w-4" />
-                      </Button>
+                      </Button> */}
                     </div>
                   </div>
 
